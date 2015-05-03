@@ -48,7 +48,7 @@ ${ h.hidden('person.company', value='') }</p>
     </div>
 % endif
 <br />
-%if h.lca_rego['personal_info']['phone'] == 'yes':
+%if c.config.get('personal_info')['phone'] == 'yes':
     <div class="form-group">
       <div class="input-group">
         <input type="text" id="personphone" class="form-control" placeholder="Phone Number" name="person.phone" required />
@@ -61,7 +61,7 @@ ${ h.hidden('person.phone') }
 ${ h.hidden('person.mobile') }
 %endif
 
-%if h.lca_rego['personal_info']['home_address'] == 'yes':
+%if c.config.get('personal_info')['home_address'] == 'yes':
     <div class="form-group">
       <div class="input-group">
         <input type="text" id="personaddress1" class="form-control" placeholder="Address" name="person.address1" required />

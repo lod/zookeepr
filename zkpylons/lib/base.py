@@ -7,6 +7,7 @@ from pylons.templating import render_mako as render
 from pylons import request, response, session, tmpl_context as c
 
 from zkpylons.model.db_content import DbContent, DbContentType
+from zkpylons.model.config import Config
 from zkpylons.model import meta
 import zkpylons.lib.helpers as h
 import datetime
@@ -36,6 +37,10 @@ class BaseController(WSGIController):
         press = DbContentType.find_by_name("In the press", abort_404 = False)
         if press:
             c.db_content_press = meta.Session.query(DbContent).filter_by(type_id=press.id).order_by(DbContent.creation_timestamp.desc()).filter(DbContent.publish_timestamp <= datetime.datetime.now()).limit(4).all()
+
+        # Allow direct model query by view using c.config.get("key")
+        # This is because with have huge numbers of parameters which can be fetched
+        c.config = Config
 
 
         try:
