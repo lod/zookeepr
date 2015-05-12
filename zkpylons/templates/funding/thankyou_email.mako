@@ -4,7 +4,7 @@ Subject: Confirmation of your ${ c.funding.type.name } funding request for ${ c.
 
 Dear ${ c.person.firstname },
 
-Thank you for submitting a ${ c.funding.type.name } requestfor ${ c.config.get('event_name') }.
+Thank you for submitting a ${ c.funding.type.name } request for ${ c.config.get('event_name') }.
 
 If you have any queries about your funding request ${ c.funding.type.name },
 please email ${ c.funding.type.notify_email }
