@@ -95,8 +95,12 @@ Receipt number: <code>PR${ c.payment_received.id }P${ c.payment.id }</code>
       <p>
         ${ c.config.get('event_postal_address') }<br>
         ${ c.config.get('event_tax_number') }<br>
+		% if c.config.get('event_phone_number'):
         Phone: ${ c.config.get('event_phone_number') }<br>
+		% endif
+		% if c.config.get('event_fax_number'):
         Fax: ${ c.config.get('event_fax_number') }<br>
+		% endif
       </p>
     </div>
 </div>
