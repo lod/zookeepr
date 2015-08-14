@@ -14,8 +14,8 @@ from zkpylons.lib.validators import BaseSchema, NotExistingPersonValidator, Exis
 import zkpylons.lib.helpers as h
 from zkpylons.lib.helpers import check_for_incomplete_profile
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from repoze.what.plugins.pylonshq import ActionProtector
+from repoze.what.predicates import is_user, in_group, Any, not_anonymous
 
 from zkpylons.lib.mail import email
 
@@ -363,7 +363,7 @@ class PersonController(BaseController): #Read, Update, List
         self.finish_login(c.person.email_address)
 
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     @dispatch_on(POST="_finish_signup")
     def finish_signup(self):
         c.form = 'finish_signup'
@@ -380,7 +380,7 @@ class PersonController(BaseController): #Read, Update, List
         return htmlfill.render(form, defaults)
 
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     @validate(schema=UpdatePersonSchema(), form='finish_signup', post_only=True, on_get=True, variable_decode=True)
     def _finish_signup(self):
         c.person = h.signed_in_person()
@@ -406,7 +406,7 @@ class PersonController(BaseController): #Read, Update, List
         # update the objects with the validated form data
         meta.Session.commit()
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     @dispatch_on(POST="_edit")
     def edit(self, id):
         # We need to recheck auth in here so we can pass in the id
@@ -426,7 +426,7 @@ class PersonController(BaseController): #Read, Update, List
         return htmlfill.render(form, defaults)
 
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     @validate(schema=UpdatePersonSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
         """UPDATE PERSON"""
@@ -440,7 +440,7 @@ class PersonController(BaseController): #Read, Update, List
 
         redirect_to(action='view', id=id)
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     def reprint(self, id):
         c.person = Person.find_by_id(id)
         c.person.badge_printed = False
@@ -502,7 +502,7 @@ class PersonController(BaseController): #Read, Update, List
         else:
             return render('/not_allowed.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new_incomplete")
     def new_incomplete(self):
         return render('/person/new_incomplete.mako')
@@ -516,12 +516,12 @@ class PersonController(BaseController): #Read, Update, List
         meta.Session.commit()
         redirect_to(controller='person', action='index')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.person_collection = Person.find_all()
         return render('/person/list.mako')
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     def view(self, id):
         # We need to recheck auth in here so we can pass in the id
         if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_reviewer_role, h.auth.has_organiser_role)):
@@ -534,7 +534,7 @@ class PersonController(BaseController): #Read, Update, List
         return render('person/view.mako')
 
     @dispatch_on(POST="_roles")
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def roles(self, id):
 
         c.person = Person.find_by_id(id)
@@ -548,7 +548,7 @@ class PersonController(BaseController): #Read, Update, List
         return render('person/roles.mako')
 
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=RoleSchema, form='roles', post_only=True, on_get=True, variable_decode=True)
     def _roles(self, id):
         """ Lists and changes the person's roles. """
@@ -575,7 +575,7 @@ class PersonController(BaseController): #Read, Update, List
         return render('person/roles.mako')
 
     @dispatch_on(POST="_offer")
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     def offer(self, id):
         # We need to recheck auth in here so we can pass in the id
         if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_reviewer_role, h.auth.has_organiser_role)):
@@ -596,7 +596,7 @@ class PersonController(BaseController): #Read, Update, List
         form = render('person/offer.mako')
         return htmlfill.render(form, defaults)
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
     @validate(schema=OfferSchema, form='offer', post_only=True, on_get=True, variable_decode=True)
     def _offer(self,id):
         # We need to recheck auth in here so we can pass in the id

@@ -13,8 +13,8 @@ from formencode.variabledecode import NestedVariables
 from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from repoze.what.plugins.pylonshq import ActionProtector
+from repoze.what.predicates import is_user, in_group, Any
 
 from zkpylons.model import meta, Person, Product, Registration, ProductCategory
 from zkpylons.model import Proposal, ProposalType, ProposalStatus, Invoice, Funding
@@ -50,7 +50,7 @@ class AdminController(BaseController):
     def __before__(self, **kwargs):
         c.signed_in_person = h.signed_in_person()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         res = dir(self)
         exceptions = ['check_permissions', 'dbsession', 'config',
@@ -133,7 +133,7 @@ class AdminController(BaseController):
         c.sect_text = sect_text
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def rej_proposals_abstracts(self):
         """ Rejected proposals, with abstracts (for the miniconf organisers) [Schedule] """
         return sql_response("""
@@ -189,7 +189,7 @@ class AdminController(BaseController):
           after,
         ))
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def _known_objects(self):
         """
         List known objects by type. (Invokes GC first.) [ZK]
@@ -210,7 +210,7 @@ class AdminController(BaseController):
         c.text = "Total: %d" % total
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def list_attachments(self):
         """ List of attachments [CFP] """
         return sql_response('''
@@ -219,7 +219,7 @@ class AdminController(BaseController):
         ''')
 
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def auth_users(self):
         """ List of users that are authorised for some role [Accounts] """
         return sql_response("""select role.name as role, firstname || ' '
@@ -228,7 +228,7 @@ class AdminController(BaseController):
         where person.id=person_id and role.id=role_id
         order by role, lastname, firstname""")
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def proposal_list(self):
         """ Large table of all the proposal proposals. [CFP] """
         return sql_response("""
@@ -239,7 +239,7 @@ class AdminController(BaseController):
           ORDER BY proposal.id ASC;
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def miniconf_list(self):
         """ Large table of all the miniconf proposals. [CFP] """
         return sql_response("""
@@ -250,7 +250,7 @@ class AdminController(BaseController):
           ORDER BY proposal.id ASC;
         """)
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def proposals_by_strong_rank(self):
         """ List of proposals ordered by number of certain score / total number of reviewers [CFP] """
         query = """
@@ -289,7 +289,7 @@ class AdminController(BaseController):
 
         return sql_response(query)
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def proposals_by_max_rank(self):
         """ List of all the proposals ordered max score, min score then average [CFP] """
         return sql_response("""
@@ -307,7 +307,7 @@ class AdminController(BaseController):
                 ORDER BY proposal_type.name ASC, max DESC, min DESC, avg DESC, proposal.id ASC
                 """)
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def proposals_by_stream(self):
         """ List of all the proposals ordered by stream, max score, min score then average [CFP] """
         return sql_response("""
@@ -328,7 +328,7 @@ class AdminController(BaseController):
                 ORDER BY stream.name, proposal_type.name ASC, max DESC, min DESC, avg DESC, proposal.id ASC
                 """)
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def proposals_by_number_of_reviewers(self):
         """ List of all proposals ordered by number of reviewers [CFP] """
         return sql_response("""
@@ -344,7 +344,7 @@ class AdminController(BaseController):
                 ORDER BY reviewers ASC, proposal.id ASC
                 """)
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def proposals_by_date(self):
         """ List of proposals by date submitted [CFP] """
         return sql_response("""
@@ -358,7 +358,7 @@ class AdminController(BaseController):
                 ORDER BY proposal.creation_timestamp ASC, proposal.id ASC
                 """)
 
-    @authorize(h.auth.has_funding_reviewer_role)
+    @ActionProtector(in_group('funding_reviewer'))
     def funding_requests_by_strong_rank(self):
         """ List of funding applications ordered by number of certain score / total number of reviewers [Funding] """
         query = """
@@ -398,7 +398,7 @@ class AdminController(BaseController):
 
         return sql_response(query)
 
-    @authorize(h.auth.has_funding_reviewer_role)
+    @ActionProtector(in_group('funding_reviewer'))
     def funding_requests_by_max_rank(self):
         """ List of all the funding applications ordered max score, min score then average [Funding] """
         return sql_response("""
@@ -417,7 +417,7 @@ class AdminController(BaseController):
                 ORDER BY funding_type.name ASC, max DESC, min DESC, avg DESC, funding.id ASC
                 """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def _countdown(self):
         """ How many days until conference opens """
         # Date is stored in ISO format, datetime doesn't provide a nice importer
@@ -426,13 +426,13 @@ class AdminController(BaseController):
         c.text = "%.1f days" % (timeleft.days + timeleft.seconds / (3600*24.))
         return render('/admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def change_config(self):
         """ Update Zookeepr site configuration values """
         return render('/angular.mako')
 
     # TODO: Unauthorised access gives 200 response, which is read as good
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @jsonify
     @dispatch_on(PUT="_put_config", GET="_get_config")
     def config(self):
@@ -503,7 +503,7 @@ class AdminController(BaseController):
 
         return {'message': 'success'}
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def silly_description_checksum(self):
         """ Generate the checksum for a given silly_description [Registrations] """
         if request.GET:
@@ -512,7 +512,7 @@ class AdminController(BaseController):
                 c.silly_description_checksum = h.silly_description_checksum(c.silly_description)
         return render('/admin/silly_description_checksum.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_followup(self):
         """ CSV export of registrations for mail merges [Registrations] """
         c.data = []
@@ -549,7 +549,7 @@ class AdminController(BaseController):
           c.data.append(row)
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_speakers(self):
         """ Listing of speakers and various stuff about them [Speakers] """
         """ HACK: This code should be in the registration controller """
@@ -629,7 +629,7 @@ class AdminController(BaseController):
         c.text += "</p>"
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_volunteers(self):
         """ Listing of volunteers and various stuff about them [Speakers] """
         """ HACK: This code should be in the registration controller """
@@ -699,7 +699,7 @@ class AdminController(BaseController):
         c.text += "</p>"
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_parking(self):
         """ List of people with parking requested [Registration] """
         return sql_response("""
@@ -736,7 +736,7 @@ class AdminController(BaseController):
             ORDER BY ceiling.name, invoice_item.description;
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_accommodation(self):
         """ List of people with accommodation requested [Registration] """
         return sql_response("""
@@ -776,7 +776,7 @@ class AdminController(BaseController):
             ORDER BY ceiling.name, invoice_item.description;
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_without_accom(self):
         """ List of people with accommodation requested [Registration] """
         return sql_response("""
@@ -796,7 +796,7 @@ class AdminController(BaseController):
                )
             );
         """)
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_bagdrop(self):
         """ List of people and swag for bag drop
         """
@@ -822,7 +822,7 @@ class AdminController(BaseController):
             ORDER BY person_id
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def registered_prestuff(self):
         """ List of people and swag for bag stuffing
         """
@@ -848,7 +848,7 @@ class AdminController(BaseController):
             ORDER BY person_id
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def reconcile(self):
         """ Reconcilliation between D1 and ZK; for now, compare the D1 data
         that have been placed in the fixed location in the filesystem and
@@ -914,7 +914,7 @@ class AdminController(BaseController):
 
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def linux_australia_signup(self):
         """ People who ticked "I want to sign up for (free) Linux Australia
         membership!" [Mailing Lists] """
@@ -934,7 +934,7 @@ class AdminController(BaseController):
 
         return sql_response(query)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def lca_announce_signup(self):
         """ People who ticked "I want to sign up to the low traffic conference announcement mailing list!" [Mailing Lists] """
 
@@ -953,7 +953,7 @@ class AdminController(BaseController):
 
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def lca_chat_signup(self):
         """ People who ticked "I want to sign up to the conference attendees mailing list!" [Mailing Lists] """
 
@@ -971,7 +971,7 @@ class AdminController(BaseController):
 
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def volunteer_signup(self):
         """ People who should be added to the volunteers mailing list" [Mailing Lists] """
 
@@ -990,7 +990,7 @@ class AdminController(BaseController):
 
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def speaker_signup(self):
         """ People who should be added to the speakers mailing list" [Mailing Lists] """
 
@@ -1009,7 +1009,7 @@ class AdminController(BaseController):
 
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def miniconf_org_signup(self):
         """ People who should be added to the miniconf organisers mailing list" [Mailing Lists] """
 
@@ -1028,7 +1028,7 @@ class AdminController(BaseController):
 
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def partners_programme_signup(self):
         """ List of partners programme people for mailing list [Mailing Lists] """
         c.text = """<p>Partners Programme people.  If they don't have an email address listed, then we'll use the person actually registered for the conference.</p>
@@ -1054,7 +1054,7 @@ class AdminController(BaseController):
 
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def speakers_partners(self):
         """ Listing of speakers and their partner details [Speakers] """
         c.columns = ['Speaker', 'e-mail', 'Partners\' Programme', 'Penguin Dinner']
@@ -1084,7 +1084,7 @@ class AdminController(BaseController):
         c.data.append(['TOTALS:', str(speakers_count) + ' speakers', str(total_partners) + ' partners', str(total_dinner) + ' dinner tickets'])
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def talks(self):
         """ List of talks for use in programme printing [Schedule] """
         c.text = "Talks with multiple speakers will appear twice."
@@ -1099,7 +1099,7 @@ class AdminController(BaseController):
         """
         return sql_response(query)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def zkpylons_sales(self):
         """ List of products and qty sold. [Inventory] """
         item_list = meta.Session.query(InvoiceItem).all()
@@ -1113,7 +1113,7 @@ class AdminController(BaseController):
         c.data.append(['','','Total:', h.integer_to_currency(total)])
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def partners_programme(self):
         """ List of partners programme contacts [Partners Programme] """
         partners_list = meta.Session.query(Product).filter(Product.category.has(name = 'Partners\' Programme')).all()
@@ -1136,7 +1136,7 @@ class AdminController(BaseController):
                                  ])
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def planet_lca(self):
         """ List of blog RSS feeds, planet compatible. [Mailing Lists] """
         c.text = """<p>List of RSS feeds for LCA planet.</p>
@@ -1152,7 +1152,7 @@ class AdminController(BaseController):
 
         return render('admin/text.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def nonregistered(self):
         """ List of people with accounts on the website but who haven't started the registration process for the conference [Accounts] """
         query = """SELECT person.firstname || ' ' || person.lastname as name, person.email_address
@@ -1161,7 +1161,7 @@ class AdminController(BaseController):
         """
         return sql_response(query)
 
-    @authorize(h.auth.Or(h.auth.has_keysigning_role, h.auth.has_organiser_role))
+    @ActionProtector(Any(in_group('funding_reviewer'), in_group('keysigning')))
     def _keysigning_participants_list(self):
         """ Generate a list of all current key id's [Keysigning] """
         from pylons import response
@@ -1170,7 +1170,7 @@ class AdminController(BaseController):
             response.content.append(keyid + "\n")
         return response
 
-    @authorize(h.auth.Or(h.auth.has_keysigning_role, h.auth.has_organiser_role))
+    @ActionProtector(Any(in_group('funding_reviewer'), in_group('keysigning')))
     def _keysigning_single(self):
         """ Generate an A4 page of key fingerprints given a keyid [Keysigning] """
         if request.POST:
@@ -1185,7 +1185,7 @@ class AdminController(BaseController):
         else:
             return render('/admin/keysigning_single.mako')
 
-    @authorize(h.auth.Or(h.auth.has_keysigning_role, h.auth.has_organiser_role))
+    @ActionProtector(Any(in_group('funding_reviewer'), in_group('keysigning')))
     def _keysigning_conference(self):
         """ Generate an A4 page of key fingerprints for everyone who has provided their fingerprint [Keysigning] """
         import os, tempfile
@@ -1201,7 +1201,7 @@ class AdminController(BaseController):
         response.content = pdf_f.read()
         pdf_f.close()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def _keysigning_participants(self):
         registration_list = meta.Session.query(Registration).join('person').filter(Registration.keyid != None).filter(Registration.keyid != '').order_by(Person.lastname).all()
         key_list = list()
@@ -1210,7 +1210,7 @@ class AdminController(BaseController):
                 key_list.append(registration.keyid)
         return key_list
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def rego_desk_list(self):
         """ List of people who have not checked in (see checkins table). [Registrations] """
         import zkpylons.model
@@ -1247,7 +1247,7 @@ class AdminController(BaseController):
 
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def previous_years_stats(self):
         """ Details on how many people have come to previous years of LCA. All people - including unpaid [Statistics] """
         registration_list = meta.Session.query(Registration).all()
@@ -1280,7 +1280,7 @@ class AdminController(BaseController):
         c.text += "Veterans: " + ", ".join(veterans) + "<br><br>Veterans of LCA (excluding CALU): " + ", ".join(veterans_lca)
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def people_by_country(self):
         """ Registered and paid people by country [Statistics] """
         c.data = meta.Session.query(func.initcap(Person.country), func.count(Person.id)).join(Invoice).join(InvoiceItem).join(Product).join(ProductCategory).filter(Invoice.is_paid == True).filter(ProductCategory.name == "Ticket").group_by(func.initcap(Person.country)).order_by(func.initcap(Person.country)).all()
@@ -1294,7 +1294,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def speakers_by_country(self):
         """ Speakers by country [Statistics] """
         data = {}
@@ -1313,7 +1313,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def people_by_state(self):
         """ Registered and paid people by state - Australia Only [Statistics] """
         c.data = meta.Session.query(func.initcap(Person.state), func.count(Person.id)).join(Invoice).join(InvoiceItem).join(Product).join(ProductCategory).filter(func.initcap(Person.country) == "Australia").filter(Invoice.is_paid == True).filter(ProductCategory.name == "Ticket").group_by(func.initcap(Person.state)).order_by(func.initcap(Person.state)).all()
@@ -1327,7 +1327,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def favourite_distro(self):
         """ Statistics on favourite distros. All people - including unpaid [Statistics] """
         data = {}
@@ -1345,7 +1345,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def favourite_editor(self):
         """ Statistics on favourite editors. All people - including unpaid [Statistics] """
         data = {}
@@ -1363,7 +1363,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def favourite_shell(self):
         """ Statistics on favourite shells. All people - including unpaid [Statistics] """
         data = {}
@@ -1381,7 +1381,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def favourite_vcs(self):
         """ Statistics on favourite vcs. All people - including unpaid [Statistics] """
         data = {}
@@ -1399,7 +1399,7 @@ class AdminController(BaseController):
         )
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def email_registration_reminder(self):
         """ Send all attendees a confirmation email of their registration details. [Registrations]"""
         c.text = 'Emailed the following attendees:'
@@ -1442,7 +1442,7 @@ class AdminController(BaseController):
         c.text = render_response('admin/table.myt', fragment=True)
         return render_response('admin/text.myt')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def late_submitters(self):
         """ List of people who are allowed to submit and edit their proposals after the CFP has closed. [CFP]"""
         c.text = '<p>List of people who are allowed to submit and edit their proposals after the CFP has closed.</p><p><b>The role should be REMOVED once they have submitted their proposal.</b></p>'
@@ -1467,7 +1467,7 @@ class AdminController(BaseController):
         c.sql = query
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def rego_foreign(self):
         people = [ r.person for r in Registration.find_all() ]
         c.columns = ['Name', 'Country']
@@ -1479,7 +1479,7 @@ class AdminController(BaseController):
         return table_response()
 
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def rego_list(self):
         """ List of paid regos - for rego desk. [Registrations] """
         people = [
@@ -1571,7 +1571,7 @@ class AdminController(BaseController):
 
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def _volunteer_grid(self):
         """ List of volunteers for exporting to mgmt DB. [Registrations] """
         c.data = []
@@ -1630,7 +1630,7 @@ class AdminController(BaseController):
 
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def paid_counts_by_date(self):
         """ Number of paid (or zerod) invoices by date. [Registrations] """
         invoices = Invoice.find_all()
@@ -1661,7 +1661,7 @@ class AdminController(BaseController):
 
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def paid_product_by_date(self):
         """ Number of paid (actual payments only) invoices per ceiling by date. [Registrations] """
         return sql_response("""
@@ -1682,7 +1682,7 @@ class AdminController(BaseController):
             ORDER BY product_category.display_order, DATE(payment_received.creation_timestamp), product.display_order;
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def paid_ticket_by_date(self):
         """ Number of paid (actual payments only) invoices per ceiling by date. [Registrations] """
         return sql_response("""
@@ -1703,7 +1703,7 @@ class AdminController(BaseController):
             ORDER BY product_category.display_order, DATE(payment_received.creation_timestamp), product.display_order;
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def paid_accom_by_date(self):
         """ Number of paid (actual payments only) invoices per ceiling by date. [Registrations] """
         return sql_response("""
@@ -1724,7 +1724,7 @@ class AdminController(BaseController):
             ORDER BY product_category.display_order, DATE(payment_received.creation_timestamp), product.display_order;
         """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def av_norelease(self):
         """ A list of proposals without releases for video/slides [AV] """
         schedule_list = meta.Session.query(Schedule).join(Event).join(TimeSlot).join(Location).join(Proposal).filter(or_(Proposal.video_release==False, Proposal.slides_release==False)).order_by(TimeSlot.start_time)
@@ -1743,7 +1743,7 @@ class AdminController(BaseController):
         c.noescape = True
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def av_technical_requirements(self):
         """ Technical requirements list [AV] """
         talk_list = Proposal.find_all_accepted().filter(Proposal.technical_requirements > '').join(ProposalStatus).filter(ProposalStatus.name == 'Accepted').join(Event).join(Schedule).join(TimeSlot).order_by(TimeSlot.start_time)
@@ -1768,7 +1768,7 @@ class AdminController(BaseController):
         c.noescape = True
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def random_delegates(self):
         """ Select 20 random (paid, non-volunteer, non-organiser, non-speaker, non-media) delegates for prize draws """
 
@@ -1809,7 +1809,7 @@ class AdminController(BaseController):
                    return True
        return False
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def _destroy_personal_information(self):
         """ Remove personal information from the database (HIGHLY DESTRUCTIVE!) [Other] """
         return 'Disabled in controllers/admin.py. <br>Go enable it there if you really need it (i.e. LCA is well over and you have a <b>backup of the database</b>).<br><font color="#FF0000">You have been warned!</font>'
@@ -1859,7 +1859,7 @@ class AdminController(BaseController):
         meta.Session.commit()
         return 'All done!'
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def lookup(self):
         """ Look up a person/rego, based on any of the associated IDs,
         showing the details as would be required for support or rego desk.
@@ -1933,7 +1933,7 @@ class AdminController(BaseController):
 
         return render('admin/lookup.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def generate_fulfilment(self):
         """ Based on currently paid invoices, generate fulfilment records
             [Registration,Invoicing] """
@@ -1978,7 +1978,7 @@ class AdminController(BaseController):
         c.data = [[result.Person.fullname, result.Product.category.name + ' - ' + result.Product.description, result.FulfilmentType.name, result.qty] for result in outstanding]
         return table_response()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def fulfilment_report(self):
         return sql_response("""
                 select description,
@@ -2003,7 +2003,7 @@ class AdminController(BaseController):
                 order by description
             """)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def generate_boardingpass(self):
         """ For every fulfilment group, generate a boarding pass
             [Registration,Invoicing] """
@@ -2026,7 +2026,7 @@ class AdminController(BaseController):
             pdf.close()
         return "Completed"
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def generate_fulfilment_codes(self):
         for fulfilment in meta.Session.query(Fulfilment).all():
             if not fulfilment.code:

@@ -94,6 +94,13 @@ def make_map(config):
     map.connect('/product/new/{cat_id}', controller='product', action='new')
     map.connect('/product/json', controller='product', action='json')
 
+    # Repoze login
+    map.connect('/login',           controller='login', action='login')
+    map.connect('/login/submit',    controller='login', action='login_handler')
+    map.connect('/login/continue',  controller='login', action='post_login')
+    map.connect('/logout/continue', controller='login', action='post_logout')
+    map.connect('/logout',          controller='login', action='logout_handler')
+
     # checkin
     map.connect('/checkin/{action}', controller='checkin')
 

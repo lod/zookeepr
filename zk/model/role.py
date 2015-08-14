@@ -1,9 +1,9 @@
 """The application's model objects"""
 import sqlalchemy as sa
 
-from meta import Base
 from pylons.controllers.util import abort
-from meta import Session
+from meta import Base, Session
+
 
 class Role(Base):
     """Stores the roles used for authorisation
@@ -15,6 +15,8 @@ class Role(Base):
     pretty_name = sa.Column(sa.types.Text, nullable=True)
     display_order = sa.Column(sa.types.Integer, nullable=True)
     comment = sa.Column(sa.types.Text, nullable=True)
+
+    users = sa.orm.relation('Person', secondary='person_role_map', backref='role')
 
     def __init__(self, **kwargs):
         super(Role, self).__init__(**kwargs)

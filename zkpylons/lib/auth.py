@@ -28,383 +28,172 @@ from pylons import request, response, session
 from pylons.controllers.util import redirect, abort
 from pylons import url
 
+#import zkpylons.lib.helpers as h
+
+from repoze.what.plugins.quickstart import setup_sql_auth
+from repoze.what.plugins import pylonshq
+from repoze.what.middleware import setup_auth
+from repoze.what.plugins.sql import configure_sql_adapters
+from repoze.who.plugins.sa import SQLAlchemyAuthenticatorPlugin, SQLAlchemyUserMDPlugin
+from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
+from repoze.who.plugins.friendlyform import FriendlyFormPlugin
+
 import hashlib
 
 log = logging.getLogger(__name__)
 
-def set_redirect():
-    # TODO: This function is called 30+ times per page when not logged in, more than seems needed
-    if not session.get('redirect_to', None):
-        session['redirect_to'] =  request.path_info
-        session.save()
-
-def set_role(msg):
-    if not session.get('role_error', None):
-        session['role_error'] = msg
-        session.save()
 
 
-class ValidZookeeprUser(UserIn):
-    """
-    Checks that the signed in user is one of the users specified when setting up
-    the user management API.
-    """
-    def __init__(self):
-        pass
+from repoze.who.middleware import PluggableAuthenticationMiddleware
+from repoze.who.interfaces import IIdentifier
+from repoze.who.interfaces import IChallenger
+from repoze.who.plugins.basicauth import BasicAuthPlugin
+from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
+from repoze.who.plugins.redirector import RedirectorPlugin
+from repoze.who.plugins.htpasswd import HTPasswdPlugin
+from StringIO import StringIO
+import sys
 
-    def check(self, app, environ, start_response):
+def basic_add_auth(app, config):
+    io = StringIO()
+    salt = 'aa'
+    for name, password in [ ('admin', 'admin'), ('chris', 'chris') ]:
+        io.write('%s:%s\n' % (name, password))
+    io.seek(0)
+    def cleartext_check(password, hashed):
+        return password == hashed
+    htpasswd = HTPasswdPlugin(io, cleartext_check)
+    basicauth = BasicAuthPlugin('repoze.who')
+    auth_tkt = AuthTktCookiePlugin('secret', 'auth_tkt')
+    redirector = RedirectorPlugin('/login')
+    redirector.classifications = {IChallenger:['browser'],} # only for browser
+    identifiers = [('auth_tkt', auth_tkt),
+                ('basicauth', basicauth)]
+    authenticators = [('auth_tkt', auth_tkt),
+                    ('htpasswd', htpasswd)]
+    challengers = [('redirector', redirector),
+                ('basicauth', basicauth)]
+    mdproviders = []
 
-        if not environ.get('REMOTE_USER'):
-            set_redirect()
-            raise NotAuthenticatedError('Not Authenticated')
+    from repoze.who.classifiers import default_request_classifier
+    from repoze.who.classifiers import default_challenge_decider
+    log_stream = sys.stdout
 
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if Person is None:
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
-
-        return app(environ, start_response)
-
-class HasZookeeprRole(HasAuthKitRole):
-    def check(self, app, environ, start_response):
-        """
-        Should return True if the user has the role or
-        False if the user doesn't exist or doesn't have the role.
-
-        In this implementation role names are case insensitive.
-        """
-
-        if not environ.get('REMOTE_USER'):
-            if self.error:
-                raise self.error
-            set_redirect()
-            raise NotAuthenticatedError('Not authenticated')
-
-        for role in self.roles:
-           if not self.role_exists(role):
-               raise NotAuthorizedError("No such role %r exists"%role)
-
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            raise users.AuthKitNoSuchUserError(
-                "No such user %r" % environ['REMOTE_USER'])
-
-        if not person.activated:
-            #set_role('User account must be activated')
-            raise NotAuthorizedError(
-                    "User account must be activated"
-                )
-
-        if self.all:
-            for role in self.roles:
-                if not self.user_has_role(person, role):
-                    if self.error:
-                        raise self.error
-                    else:
-                        set_role("User doesn't have the role %s"%role.lower())
-                        raise NotAuthorizedError(
-                            "User doesn't have the role %s"%role.lower()
-                        )
-            return app(environ, start_response)
-        else:
-            for role in self.roles:
-                if self.user_has_role(person, role):
-                    return app(environ, start_response)
-            if self.error:
-                raise self.error
-            else:
-                set_role("User doesn't have any of the specified roles")
-                raise NotAuthorizedError(
-                    "User doesn't have any of the specified roles"
-                )
-
-    def role_exists(self, role):
-        """
-        Returns ``True`` if the role exists, ``False`` otherwise. Roles are
-        case insensitive.
-        """
-        role = Role.find_by_name(role)
-
-        if role is not None:
-            return True
-        return False
-
-    def user_has_role(self, person, role):
-        """
-        Returns ``True`` if the user has the role specified, ``False``
-        otherwise. Raises an exception if the user doesn't exist.
-        """
-        if not self.role_exists(role.lower()):
-            raise users.AuthKitNoSuchRoleError("No such role %r"%role.lower())
-
-        for role_ in person.roles:
-            if role_.name == role.lower():
-                return True
-        return False
-
-
-class IsSameZookeeprUser(UserIn):
-    """
-    Checks that the signed in user is one of the users specified when setting up
-    the user management API.
-    """
-    def __init__(self, id):
-        self.id = int(id)
-
-    def check(self, app, environ, start_response):
-
-        if not environ.get('REMOTE_USER'):
-            set_redirect()
-            raise NotAuthenticatedError('Not Authenticated')
-
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
-
-        if self.id != person.id:
-            set_role("User doesn't have any of the specified role")
-            raise NotAuthorizedError(
-                "User doesn't have any of the specified roles"
-            )
-
-        return app(environ, start_response)
-
-
-class IsActivatedZookeeprUser(UserIn):
-    """
-    Checks that the signed in user is activated
-    """
-
-    def __init__(self):
-        pass
-
-    def check(self, app, environ, start_response):
-        if not environ.get('REMOTE_USER'):
-            set_redirect()
-            raise NotAuthenticatedError('Not Authenticated')
-
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            set_redirect()
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
-
-        if not person.activated:
-            set_redirect()
-            if 'is_active' in dir(meta.Session):
-                meta.Session.flush()
-                meta.Session.close()
-
-            redirect(url(controller="person", action="activate"))
-
-        return app(environ, start_response)
-
-
-class IsSameZookeeprSubmitter(UserIn):
-    """
-    Checks that the signed in user is one of the users specified when setting up
-    the user management API.
-    """
-    def __init__(self, proposal_id):
-        self.proposal_id = int(proposal_id)
-
-    def check(self, app, environ, start_response):
-
-        if not environ.get('REMOTE_USER'):
-            set_redirect()
-            raise NotAuthenticatedError('Not Authenticated')
-
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
-
-        proposal = Proposal.find_by_id(self.proposal_id)
-        if proposal is None:
-            raise NotAuthorizedError(
-                "Proposal doesn't exist"
-            )
-
-        if person not in proposal.people:
-            set_role("User doesn't have any of the specified roles")
-            raise NotAuthorizedError(
-                "User doesn't have any of the specified roles"
-            )
-
-        return app(environ, start_response)
-
-class IsSameZookeeprFundingSubmitter(UserIn):
-    """
-    Checks that the signed in user is one of the users specified when setting up
-    the user management API.
-    """
-    def __init__(self, funding_id):
-        self.funding_id = int(funding_id)
-
-    def check(self, app, environ, start_response):
-
-        if not environ.get('REMOTE_USER'):
-            raise NotAuthenticatedError('Not Authenticated')
-
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
-
-        funding = Funding.find_by_id(self.funding_id)
-        if funding is None:
-            raise NotAuthorizedError(
-                "Funding Request doesn't exist"
-            )
-
-        if person != funding.person:
-            set_role("User doesn't have any of the specified roles")
-            raise NotAuthorizedError(
-                "User doesn't have any of the specified roles"
-            )
-
-        return app(environ, start_response)
-
-class IsSameZookeeprAttendee(UserIn):
-    """
-    Checks that the signed in user is the user for which the given invoice
-    is for.
-    """
-    def __init__(self, invoice_id):
-        self.invoice_id = int(invoice_id)
-
-    def check(self, app, environ, start_response):
-
-        if not environ.get('REMOTE_USER'):
-            set_redirect()
-            raise NotAuthenticatedError('Not Authenticated')
-
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
-
-        invoice = Invoice.find_by_id(self.invoice_id)
-        if invoice is None:
-            raise NotAuthorizedError(
-                "Invoice doesn't exist"
-            )
-
-        if person.id <> invoice.person_id:
-            set_role("Invoice is not for this user")
-            raise NotAuthorizedError(
-                "Invoice is not for this user"
-            )
-
-        return app(environ, start_response)
-
-class HasUniqueKey(Permission):
-    def check(self, app, environ, start_response):
-        url = request.path
-        fields = dict(request.GET)
-        if fields.has_key('hash'):
-            dburl = URLHash.find_by_hash(fields['hash']).url
-            if dburl is not None:
-                if url.startswith(dburl):
-                    return app(environ, start_response)
-        raise NotAuthorizedError(
-            "You are not authorised to view this page"
+    middleware = PluggableAuthenticationMiddleware(
+        app,
+        identifiers,
+        authenticators,
+        challengers,
+        mdproviders,
+        default_request_classifier,
+        default_challenge_decider,
+        log_stream = log_stream,
+        log_level = logging.DEBUG
         )
+    return middleware
 
-class IsSameZookeeprRegistration(UserIn):
-    """
-    Checks that the signed in user is the user this registration belongs
-    to.
-    """
-    def __init__(self, registration_id):
-        self.registration_id = int(registration_id)
 
-    def check(self, app, environ, start_response):
+# Repoze auth
 
-        if not environ.get('REMOTE_USER'):
-            set_redirect()
-            raise NotAuthenticatedError('Not Authenticated')
+def add_auth_fancy(app, config):
+    log.debug("Running repoze add_auth")
 
-        person = Person.find_by_email(environ['REMOTE_USER'])
-        if person is None:
-            environ['auth_failure'] = 'NO_USER'
-            raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
-            )
+    translations = {
+        'user_name'         : 'email_address',
+        'users'             : 'people',
+        'group_name'        : 'name',
+        'groups'            : 'roles',
+        'validate_password' : 'check_password',
+    }
 
-        registration = Registration.find_by_id(self.registration_id)
-        if registration is None:
-            raise NotAuthorizedError(
-                "Registration doesn't exist"
-            )
+    return setup_sql_auth(app, Person, Role, None, meta.Session, 
+                  login_handler = '/login/submit',
+       logout_handler = '/logout',
+       post_login_url = '/login/continue',
+       post_logout_url = '/logout/continue',
+       charset=None,
+       cookie_secret = 'my_secret_word', translations=translations)
 
-        if person.id <> registration.person_id:
-            set_role("Registration is not for this user");
-            raise NotAuthorizedError(
-                "Registration is not for this user"
-            )
+def add_auth(app,config):
 
-        return app(environ, start_response)
+    # Mostly a copy from repoze.what.plugins.quickstart.setup_sql_auth
+    source_adapters = configure_sql_adapters(
+            Person,
+            Role,
+            None,
+            meta.Session,
+            {'item_name' : 'email_address', 'items':'people', 'section_name':'name', 'sections':'roles'},
+            {})
 
-class Or(Permission):
-    """
-    Checks all the permission objects listed as keyword arguments in turn.
-    Permissions are checked from left to right. The error raised by the ``Or``
-    permission is the error raised by the first permission check to fail.
-    """
+    group_adapters= {}
+    group_adapter = source_adapters.get('group')
+    if group_adapter:
+        group_adapters = {'sql_auth': group_adapter}
 
-    def __init__(self, *permissions):
-        if len(permissions) < 2:
-            raise PermissionSetupError('Expected at least 2 permissions objects')
-        permissions = list(permissions)
-        self.permissions = permissions
+    permission_adapters = {}
+    
+    # Setting the repoze.who authenticators:
+    who_args = {}
+    who_args['authenticators'] = []
+        
+    sqlauth = SQLAlchemyAuthenticatorPlugin(Person, meta.Session)
+    sqlauth.translations.update({'user_name':'email_address', 'validate_password':'check_password'})
+    cookie = AuthTktCookiePlugin('my_secret', 'authtkt',
+                                 timeout=None, reissue_time=None)
+    who_args['authenticators'].append(('sqlauth', sqlauth))
+    who_args['authenticators'].append(('auth_tkt', cookie))
+    
 
-    def check(self, app, environ, start_response):
-        for permission in self.permissions:
-            try:
-                permission.check(app, environ, start_response)
-                return app(environ, start_response)
-            except (NotAuthenticatedError, NotAuthorizedError):
-                pass
-
-        raise NotAuthorizedError(
-                'You are not one of the users allowed to access this resource.'
+    form = FriendlyFormPlugin(
+        '/login',
+        '/login/submit',
+        '/login/continue',
+        '/logout',
+        '/logout/continue',
+        login_counter_name=None,
+        rememberer_name='cookie',
+        charset=None,
+        #charset="iso-8859-1",
         )
+    
+    # Setting the repoze.who identifiers
+    who_args['identifiers'] = []
+    who_args['identifiers'].append(('cookie', cookie))
+    who_args['identifiers'].insert(0, ('main_identifier', form))
+    
+    # Setting the repoze.who challengers:
+    who_args['challengers'] = []
+    who_args['challengers'].append(('form', form))
+    
+    # Setting up the repoze.who mdproviders:
+    sql_user_md = SQLAlchemyUserMDPlugin(Person, meta.Session)
+    sql_user_md.translations.update({'user_name':'email_address'})
+    who_args['mdproviders'] = []
+    who_args['mdproviders'].append(('sql_user_md', sql_user_md))
 
-def no_role():
-    set_role("User doesn't have any of the specified roles")
-    raise NotAuthorizedError(
-            "User doesn't have any of the specified roles"
-            )
+    who_args['log_stream'] = log
+    who_args['log_level'] = logging.DEBUG
+    
+    middleware = setup_auth(app, group_adapters, {}, **who_args)
+    return middleware
 
 
-# Role shortcuts to save db work
-has_organiser_role = HasZookeeprRole('organiser')
-has_reviewer_role = HasZookeeprRole('reviewer')
-has_funding_reviewer_role = HasZookeeprRole('funding_reviewer')
-has_proposals_chair_role = HasZookeeprRole('proposals_chair')
-has_late_submitter_role = HasZookeeprRole('late_submitter')
-has_planetfeed_role = HasZookeeprRole('planetfeed')
-has_keysigning_role = HasZookeeprRole('keysigning')
-has_checkin_role = HasZookeeprRole('checkin')
-is_valid_user = ValidZookeeprUser()
-is_activated_user = IsActivatedZookeeprUser()
-is_same_zkpylons_user = IsSameZookeeprUser
-is_same_zkpylons_submitter = IsSameZookeeprSubmitter
-is_same_zkpylons_attendee = IsSameZookeeprAttendee
-is_same_zookeepr_registration = IsSameZookeeprRegistration
-is_same_zkpylons_funding_submitter = IsSameZookeeprFundingSubmitter
-has_unique_key = HasUniqueKey
+def redirect_auth_denial(reason):
+    if response.status_int == 401:
+        message = 'You are not logged in.'
+        message_type = 'warning'
+    else:
+        message = 'You do not have the permissions to access this page.'
+        message_type = 'error'
+
+    #h.flash(message, message_type)
+    redirect(url('/login', came_from=url.current()))
+
+class ActionProtector(pylonshq.ActionProtector):
+    default_denial_handler = staticmethod(redirect_auth_denial)
+
+def has_organiser_role():
+    return in_group('organiser').is_met(request.environ)
+
+def has_reviewer_role():
+    return in_group('reviewer').is_met(request.environ)

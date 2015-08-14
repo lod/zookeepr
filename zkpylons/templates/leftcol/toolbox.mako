@@ -49,7 +49,7 @@ ${ parent.toolbox_extra() }
       ${ make_link('Sign in', "/person/signin") }
       ${ make_link('Create an account', "/person/new") }
 % endif
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_organiser_role:
     <li><span class="menu-header">Zookeepr Administration</span>
     <ul class="netv-vmenu">
       ${ make_link('Admin', h.url_for(controller='admin')) }
@@ -65,7 +65,7 @@ ${ parent.toolbox_extra() }
 ${ parent.toolbox_extra_admin() }
     </ul></li>
 % endif
-% if h.auth.authorized(h.auth.has_reviewer_role):
+% if h.auth.has_reviewer_role:
     <li><span class="menu-header">Paper Reviewer</span>
     <ul class="netv-vmenu">
 ${ parent.toolbox_extra_reviewer() }
@@ -86,7 +86,7 @@ ${ parent.toolbox_extra_reviewer() }
         ${ make_link('submission date', h.url_for(controller='admin', action='proposals_by_date', id=None)) }
       </ul></li>
 % endif
-% if h.auth.authorized(h.auth.has_funding_reviewer_role):
+% if h.auth.has_funding_reviewer_role:
     <li><span class="menu-header">Funding Reviewer</span>
     <ul class="netv-vmenu">
 ${ parent.toolbox_extra_funding_reviewer() }

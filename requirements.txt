@@ -15,6 +15,13 @@ waitress
 zope.sqlalchemy
 reportlab
 
+# Authentication transition
+repoze.who
+repoze.who.plugins.sa
+repoze.what-quickstart
+repoze.what-pylons
+pyramid_who
+
 #### LEGACY (zkpylon) requirements:
 AuthKit>=0.4.0
 FormEncode>=0.6

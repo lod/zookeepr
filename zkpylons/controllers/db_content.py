@@ -13,8 +13,8 @@ from zkpylons.lib.validators import BaseSchema, DbContentTypeValidator
 import zkpylons.lib.helpers as h
 from datetime import datetime, timedelta
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from repoze.what.plugins.pylonshq import ActionProtector
+from repoze.what.predicates import is_user, in_group, Any
 
 from zkpylons.lib.mail import email
 
@@ -54,13 +54,13 @@ class DbContentController(BaseController):
     def __before__(self, **kwargs):
         c.db_content_types = DbContentType.find_all()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.db_content_collection = DbContent.find_all()
         return render('/db_content/list.mako')
 
-    @authorize(h.auth.has_organiser_role)
-    @dispatch_on(POST="_new")
+    @ActionProtector(in_group('organiser'))
+    @dispatch_on(POST="_new") 
     def new(self):
         if len(c.db_content_types) is 0:
             h.flash("Configuration Error: Please make sure at least one content type exists.", 'error')
@@ -121,8 +121,8 @@ class DbContentController(BaseController):
            return self.view(c.db_content.id)
         return NotFoundController().view()
 
-    @authorize(h.auth.has_organiser_role)
-    @dispatch_on(POST="_edit")
+    @ActionProtector(in_group('organiser'))
+    @dispatch_on(POST="_edit") 
     def edit(self, id):
         c.db_content = DbContent.find_by_id(id)
 
@@ -161,7 +161,7 @@ class DbContentController(BaseController):
         h.flash("Page updated.")
         redirect_to(action='view', id=id)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete")
     def delete(self, id):
         c.db_content = DbContent.find_by_id(id)
@@ -208,7 +208,7 @@ class DbContentController(BaseController):
         response.headers['Content-type'] = 'application/rss+xml; charset=utf-8'
         return render('/db_content/rss_news.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_upload")
     def upload(self):
         c.no_theme = request.GET.get('no_theme') == 'true'
@@ -228,7 +228,7 @@ class DbContentController(BaseController):
         c.no_theme = request.GET.get('no_theme') == 'true'
         redirect_to(action="list_files", folder=c.current_folder, no_theme=c.no_theme)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete_folder")
     def delete_folder(self):
         try:
@@ -260,7 +260,7 @@ class DbContentController(BaseController):
 
         redirect_to(action="list_files", folder=c.current_folder, no_theme = c.no_theme)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete_file")
     def delete_file(self):
         try:
@@ -293,7 +293,7 @@ class DbContentController(BaseController):
         redirect_to(action="list_files", folder=c.current_folder, no_theme = c.no_theme)
 
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def list_files(self):
         # Taken from http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/170242
         def caseinsensitive_sort(stringList):

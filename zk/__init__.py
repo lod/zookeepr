@@ -8,8 +8,10 @@ def main(global_config, **settings):
     """
     engine = engine_from_config(settings, 'sqlalchemy.')
     config = Configurator(settings=settings)
+
     #config.add_static_view('public', 'public', cache_max_age=3600)
     config.add_route('home', '/pyramid')
+    config.add_route('api.config', '/api/config')
 
     legacy_view = LegacyView(global_config, **settings)
     config.add_notfound_view(view=legacy_view)

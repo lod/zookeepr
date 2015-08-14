@@ -11,9 +11,12 @@ from routes.middleware import RoutesMiddleware
 from paste.recursive import RecursiveMiddleware
 
 from paste.pony import PonyMiddleware
-import authkit.authenticate
 
+from zkpylons.lib.auth import add_auth
 from zkpylons.config.environment import load_environment
+
+import logging
+
 
 
 def  make_app(global_conf, full_stack=True, static_files=True, **app_conf):
@@ -51,7 +54,13 @@ def  make_app(global_conf, full_stack=True, static_files=True, **app_conf):
     app = CacheMiddleware(app, config)
 
     # Needed by authkit
-    app = RecursiveMiddleware(app, global_conf)
+    #app = RecursiveMiddleware(app, global_conf)
+
+    # Repoze auth
+    log = logging.getLogger(__name__)
+    log.debug('before add_auth')
+    app = add_auth(app, config)
+    log.debug('after add_auth')
 
     # CUSTOM MIDDLEWARE HERE (filtered by error handling middlewares)
 
@@ -63,8 +72,6 @@ def  make_app(global_conf, full_stack=True, static_files=True, **app_conf):
     if asbool(full_stack):
         # Handle Python exceptions
         app = ErrorHandler(app, global_conf, **config['pylons.errorware'])
-
-        app = authkit.authenticate.middleware(app, app_conf)
 
         # Display error documents for 401, 403, 404 status codes (and
         # 500 when debug is disabled)
