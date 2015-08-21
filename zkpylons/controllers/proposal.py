@@ -12,8 +12,7 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, PersonValidator, ProposalValidator, FileUploadValidator, PersonSchema, ProposalTypeValidator, TargetAudienceValidator, ProposalStatusValidator, AccommodationAssistanceTypeValidator, TravelAssistanceTypeValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, is_activated, in_group, not_anonymous
 
 from zkpylons.lib.mail import email
 
@@ -84,8 +83,8 @@ class ProposalController(BaseController):
         c.cfp_hide_assistance_info = Config.get('cfp_hide_assistance_info')
         c.cfp_hide_scores          = Config.get('cfp_hide_scores')
 
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
+    @ActionProtector(not_anonymous())
+    @ActionProtector(is_activated())
     def __before__(self, **kwargs):
         c.proposal_types = ProposalType.find_all()
         c.target_audiences = TargetAudience.find_all()
@@ -161,7 +160,7 @@ class ProposalController(BaseController):
         return redirect_to(controller='proposal', action="index", id=None)
 
     @dispatch_on(POST="_review")
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def review(self, id):
         c.streams = Stream.select_values()
         c.proposal = Proposal.find_by_id(id)
@@ -184,7 +183,7 @@ class ProposalController(BaseController):
             return render('/review/new.mako')
 
     @validate(schema=NewEditReviewSchema(), form='review', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def _review(self, id):
         """Review a proposal.
         """
@@ -334,7 +333,7 @@ class ProposalController(BaseController):
         h.flash("Proposal %s edited!"%p_edit)
         return redirect_to('/proposal')
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def review_index(self):
         c.person = h.signed_in_person()
         c.num_proposals = 0
@@ -353,7 +352,7 @@ class ProposalController(BaseController):
 
         return render('proposal/list_review.mako')
 
-    @authorize(h.auth.has_reviewer_role)
+    @ActionProtector(in_group('reviewer'))
     def summary(self):
         c.proposal = {}
         for proposal_type in c.proposal_types:
@@ -371,7 +370,7 @@ class ProposalController(BaseController):
         return render('/proposal/list.mako')
 
     @dispatch_on(POST="_approve")
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def approve(self):
         c.highlight = set()
         c.proposals = Proposal.find_all()
@@ -379,7 +378,7 @@ class ProposalController(BaseController):
         return render("proposal/approve.mako")
 
     @validate(schema=ApproveSchema(), form='approve', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def _approve(self):
         c.highlight = set()
         talks = self.form_result['talk']
@@ -423,7 +422,7 @@ class ProposalController(BaseController):
         h.flash("Proposal withdrawn. The organisers have been notified.")
         return redirect_to(controller='proposal', action="index", id=None)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def latex(self):
         c.proposal_type = ProposalType.find_all()
 

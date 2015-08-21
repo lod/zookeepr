@@ -16,13 +16,13 @@ ${ h.end_form() }
 
 <p>Otherwise enter your credentials in the following form.</p>
 
-${ h.form(h.url_for(), method='post', id='signin-form') }
+${ h.form('/person/do_signin', method='post', id='signin-form') }
 
     <p class="label"><label for="person.email_address">Email address:</label></p>
-    <p class="entries">${ h.text('person.email_address', size=40) }</p>
+    <p class="entries">${ h.text('login', size=40) }</p>
 
     <p class="label"><label for="person.password">Password:</label></p>
-    <p class="entries">${ h.password('person.password') }</p>
+    <p class="entries">${ h.password('password') }</p>
 
     <p class="submit">${ h.submit('Sign in', 'Sign in') }</p>
 

@@ -21,8 +21,7 @@ from zkpylons.lib.validators import ProDinner, PPDetails, PPChildrenAdult
 
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, in_group, not_anonymous, is_activated
 
 from zkpylons.lib.mail import email
 
@@ -152,8 +151,8 @@ edit_schema = NewRegistrationSchema()
 class RegistrationController(BaseController):
 
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.is_activated_user)
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(not_anonymous())
+    @ActionProtector(is_activated())
     def __before__(self, **kwargs):
         c.product_categories = ProductCategory.find_all()
         c.ceilings = {}
@@ -782,7 +781,7 @@ class RegistrationController(BaseController):
                     invoice.items.append(discount_item)
                     break
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         per_page = 20
         from webhelpers import paginate #Upgrade to new paginate
@@ -938,7 +937,7 @@ class RegistrationController(BaseController):
         res.headers['Content-Disposition']='attachment; filename="table.csv"'
         return res
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def generate_badges(self):
         defaults = dict(request.POST)
         stamp = False
@@ -1130,12 +1129,12 @@ class RegistrationController(BaseController):
         c.registration = Registration.find_by_id(id)
         return render('/registration/view.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def remind(self):
         c.registration_collection = Registration.find_all()
         return render('/registration/remind.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def professionals_latex(self):
         c.profs= {}
         registration_list = Registration.find_all()
@@ -1160,7 +1159,7 @@ class RegistrationController(BaseController):
         response.headers['Content-type']='text/plain; charset=utf-8'
         return render('/registration/professionals_latex.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def rego_desk_latex(self):
         registration_list = Registration.find_all()
         for r in registration_list:

@@ -33,7 +33,8 @@ class LoginController(BaseController):
         redirect(came_from)
 
     def logout_handler(self):
-        pass
+        log.warning("LOGOUT 1")
      
     def post_logout(self):
+        log.warning("LOGOUT 2")
         redirect('/')

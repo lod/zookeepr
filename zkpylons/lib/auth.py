@@ -9,110 +9,30 @@
 
 import logging
 
-from pylons.templating import render_mako as render
-from pylons import tmpl_context as c
-from pylons import request
-
-from formencode import validators, htmlfill, Invalid
-from zkpylons.lib.validators import BaseSchema
-
-from zkpylons.model import meta
-from zkpylons.model import Person, Role, Proposal, Invoice, Registration, Funding, URLHash
-
-from authkit import users
-from authkit.permissions import HasAuthKitRole, UserIn, NotAuthenticatedError, NotAuthorizedError, Permission, PermissionError
-from authkit.authorize import PermissionSetupError, middleware
-from authkit.authorize.pylons_adaptors import authorized
+from zkpylons.model import meta, Person, Role
+#from zkpylons.lib.helpers import flash
 
 from pylons import request, response, session
 from pylons.controllers.util import redirect, abort
 from pylons import url
 
-#import zkpylons.lib.helpers as h
-
-from repoze.what.plugins.quickstart import setup_sql_auth
-from repoze.what.plugins import pylonshq
 from repoze.what.middleware import setup_auth
-from repoze.what.plugins.sql import configure_sql_adapters
+from repoze.what.predicates import Predicate, in_group
+from repoze.who.api import get_api
 from repoze.who.plugins.sa import SQLAlchemyAuthenticatorPlugin, SQLAlchemyUserMDPlugin
 from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
 from repoze.who.plugins.friendlyform import FriendlyFormPlugin
+# TODO: repoze.who.plugins.browserid
+from repoze.what.plugins import pylonshq
+from repoze.what.plugins.sql import configure_sql_adapters
 
-import hashlib
+# Import to provide a centralised export point
+from repoze.what.plugins.pylonshq import ActionProtector
+from repoze.what.predicates import is_user, in_group, All, Any, not_anonymous
+
 
 log = logging.getLogger(__name__)
 
-
-
-from repoze.who.middleware import PluggableAuthenticationMiddleware
-from repoze.who.interfaces import IIdentifier
-from repoze.who.interfaces import IChallenger
-from repoze.who.plugins.basicauth import BasicAuthPlugin
-from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
-from repoze.who.plugins.redirector import RedirectorPlugin
-from repoze.who.plugins.htpasswd import HTPasswdPlugin
-from StringIO import StringIO
-import sys
-
-def basic_add_auth(app, config):
-    io = StringIO()
-    salt = 'aa'
-    for name, password in [ ('admin', 'admin'), ('chris', 'chris') ]:
-        io.write('%s:%s\n' % (name, password))
-    io.seek(0)
-    def cleartext_check(password, hashed):
-        return password == hashed
-    htpasswd = HTPasswdPlugin(io, cleartext_check)
-    basicauth = BasicAuthPlugin('repoze.who')
-    auth_tkt = AuthTktCookiePlugin('secret', 'auth_tkt')
-    redirector = RedirectorPlugin('/login')
-    redirector.classifications = {IChallenger:['browser'],} # only for browser
-    identifiers = [('auth_tkt', auth_tkt),
-                ('basicauth', basicauth)]
-    authenticators = [('auth_tkt', auth_tkt),
-                    ('htpasswd', htpasswd)]
-    challengers = [('redirector', redirector),
-                ('basicauth', basicauth)]
-    mdproviders = []
-
-    from repoze.who.classifiers import default_request_classifier
-    from repoze.who.classifiers import default_challenge_decider
-    log_stream = sys.stdout
-
-    middleware = PluggableAuthenticationMiddleware(
-        app,
-        identifiers,
-        authenticators,
-        challengers,
-        mdproviders,
-        default_request_classifier,
-        default_challenge_decider,
-        log_stream = log_stream,
-        log_level = logging.DEBUG
-        )
-    return middleware
-
-
-# Repoze auth
-
-def add_auth_fancy(app, config):
-    log.debug("Running repoze add_auth")
-
-    translations = {
-        'user_name'         : 'email_address',
-        'users'             : 'people',
-        'group_name'        : 'name',
-        'groups'            : 'roles',
-        'validate_password' : 'check_password',
-    }
-
-    return setup_sql_auth(app, Person, Role, None, meta.Session, 
-                  login_handler = '/login/submit',
-       logout_handler = '/logout',
-       post_login_url = '/login/continue',
-       post_logout_url = '/logout/continue',
-       charset=None,
-       cookie_secret = 'my_secret_word', translations=translations)
 
 def add_auth(app,config):
 
@@ -144,16 +64,16 @@ def add_auth(app,config):
     who_args['authenticators'].append(('auth_tkt', cookie))
     
 
+    # form fields: login, password
     form = FriendlyFormPlugin(
-        '/login',
-        '/login/submit',
-        '/login/continue',
-        '/logout',
-        '/logout/continue',
-        login_counter_name=None,
-        rememberer_name='cookie',
-        charset=None,
-        #charset="iso-8859-1",
+        login_form_url      = '/person/signin',
+        login_handler_path  = '/person/do_signin',
+        post_login_url      = '/person/post_signin', # Redirected regardless of login success
+        logout_handler_path = '/person/signout',
+        post_logout_url     = '/',
+        login_counter_name  = None,
+        rememberer_name     = 'cookie',
+        charset             = None,
         )
     
     # Setting the repoze.who identifiers
@@ -177,8 +97,24 @@ def add_auth(app,config):
     middleware = setup_auth(app, group_adapters, {}, **who_args)
     return middleware
 
+def override_login(email):
+    """ Force a login with the supplied credentials.
+        This is useful for automatic login, on account creation or password reset.
+    """
+
+    # Set up identity environment for repoze
+    cookie = AuthTktCookiePlugin('my_secret', 'authtkt',
+                                 timeout=None, reissue_time=None)
+    request.environ['repoze.who.identity'] = {
+        'identifier': cookie,
+        'repoze.who.userid': email,
+    }
+    get_api(request.environ).remember()
+
 
 def redirect_auth_denial(reason):
+    print "REDIRECT-AUTH-DENIAL", reason, request, response
+
     if response.status_int == 401:
         message = 'You are not logged in.'
         message_type = 'warning'
@@ -186,8 +122,9 @@ def redirect_auth_denial(reason):
         message = 'You do not have the permissions to access this page.'
         message_type = 'error'
 
-    #h.flash(message, message_type)
-    redirect(url('/login', came_from=url.current()))
+    #flash(message, message_type) # TODO: import errors (loop)
+    #redirect(url('/login', came_from=url.current()))
+    abort(response.status_int, comment=reason)
 
 class ActionProtector(pylonshq.ActionProtector):
     default_denial_handler = staticmethod(redirect_auth_denial)
@@ -197,3 +134,23 @@ def has_organiser_role():
 
 def has_reviewer_role():
     return in_group('reviewer').is_met(request.environ)
+
+def has_funding_reviewer_role():
+    return in_group('funding_reviewer').is_met(request.environ)
+
+def has_late_submitter_role():
+    return in_group('late_submitter').is_met(request.environ)
+
+def get_person_id():
+    return Person.find_by_email(request.environ['REMOTE_USER']).id
+
+class is_activated(Predicate):
+    message = "Your user account must be activated to continue"
+    def evaluate(self, environ, credentials):
+        print "CREDS", credentials
+        p = Person.find_by_email(environ['REMOTE_USER']);
+        if not p.activated:
+            # TODO: I don't like the idea of doing redirects in a tester
+            #self.unmet(p.activated)
+            # TODO: Should I be using zkpylons.lib.helpers.redirect_to()?
+            redirect(url(controller="person", action="activate"))

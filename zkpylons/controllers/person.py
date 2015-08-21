@@ -1,6 +1,6 @@
 import logging
 
-from pylons import request, response, session, tmpl_context as c
+from pylons import request, response, session, url, tmpl_context as c
 from zkpylons.lib.helpers import redirect_to
 from pylons.decorators import validate
 from pylons.decorators.rest import dispatch_on
@@ -14,9 +14,7 @@ from zkpylons.lib.validators import BaseSchema, NotExistingPersonValidator, Exis
 import zkpylons.lib.helpers as h
 from zkpylons.lib.helpers import check_for_incomplete_profile
 
-from repoze.what.plugins.pylonshq import ActionProtector
-from repoze.what.predicates import is_user, in_group, Any, not_anonymous
-
+from zkpylons.lib.auth import ActionProtector, override_login, is_user, in_group, Any, not_anonymous
 from zkpylons.lib.mail import email
 
 from zkpylons.model import meta
@@ -93,20 +91,6 @@ class UpdatePersonSchema(BaseSchema):
     pre_validators = [NestedVariables]
 
 
-class AuthPersonValidator(validators.FancyValidator):
-    def validate_python(self, values, state):
-        c.email = values['email_address']
-        c.person = Person.find_by_email(c.email)
-        error_message = None
-        if c.person is None or not c.person.check_password(values['password']):
-            error_message = ("Your sign-in details are incorrect; try the"
-                             " 'Forgotten your password' link below or sign up"
-                             " for a new person.")
-            message = "Login failed"
-            error_dict = {'email_address': error_message}
-            raise Invalid(message, values, state, error_dict=error_dict)
-
-
 class PersonaValidator(validators.FancyValidator):
     def validate_python(self, values, state):
         assertion = values['assertion']
@@ -140,17 +124,6 @@ class PersonaValidator(validators.FancyValidator):
             meta.Session.commit()
 
 
-class LoginPersonSchema(BaseSchema):
-    email_address = validators.Email(not_empty=True)
-    password = validators.String(not_empty=True)
-    chained_validators = [AuthPersonValidator()]
-
-
-class LoginSchema(BaseSchema):
-    person = LoginPersonSchema()
-    pre_validators = [NestedVariables]
-
-
 class PersonaLoginSchema(BaseSchema):
     assertion = validators.String(not_empty=True)
     chained_validators = [PersonaValidator()]
@@ -178,7 +151,7 @@ class PersonController(BaseController): #Read, Update, List
     def __before__(self, **kwargs):
         pass
 
-    @dispatch_on(POST="_signin")
+    @dispatch_on(POST="do_signin")
     def signin(self):
 
         role_error = session.pop('role_error', None)
@@ -189,15 +162,6 @@ class PersonController(BaseController): #Read, Update, List
             redirect_to('home')
 
         return render('/person/signin.mako')
-
-    def finish_login(self, email):
-        # Tell authkit we authenticated them
-        request.environ['paste.auth_tkt.set_user'](email)
-
-        h.check_for_incomplete_profile(c.person)
-
-        h.flash('You have signed in')
-        self._redirect_user_optimally()
 
     def _redirect_user_optimally(self):
         redirect_location = session.get('redirect_to', None)
@@ -213,13 +177,29 @@ class PersonController(BaseController): #Read, Update, List
 
         redirect_to('home')
 
-    @validate(schema=LoginSchema(), form='signin', post_only=True, on_get=False, variable_decode=True)
-    def _signin(self):
-        self.finish_login(c.email)
+
+    def do_signin(self):
+        pass # Magic repoze handled url
+
+    def post_signin(self):
+        identity = request.environ.get('repoze.who.identity')
+        came_from = str(request.params.get('came_from', '')) or url('/')
+        if identity:
+            self._redirect_user_optimally()
+        h.flash("Your sign-in details are incorrect; try the"
+                " 'Forgotten your password' link below or sign up"
+                " for a new person.")
+        return render('/person/signin.mako')
 
     @validate(schema=PersonaLoginSchema(), form='persona_login', post_only=True, on_get=False, variable_decode=True)
     def persona_login(self):
-        self.finish_login(c.email)
+        override_login(c.email)
+
+        h.check_for_incomplete_profile(c.person)
+
+        h.flash('You have signed in')
+        self._redirect_user_optimally()
+
 
     def signout_confirm(self, id=None):
         """ Confirm user wants to sign out
@@ -360,7 +340,12 @@ class PersonController(BaseController): #Read, Update, List
         meta.Session.commit()
 
         h.flash('Your password has been updated!')
-        self.finish_login(c.person.email_address)
+
+        override_login(c.person.email_address)
+
+        h.check_for_incomplete_profile(c.person)
+
+        self._redirect_user_optimally()
 
 
     @ActionProtector(not_anonymous())
@@ -410,7 +395,7 @@ class PersonController(BaseController): #Read, Update, List
     @dispatch_on(POST="_edit")
     def edit(self, id):
         # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_organiser_role)):
+        if not (h.auth.get_person_id() == id or h.auth.has_organiser_role()):
             # Raise a no_auth error
             h.auth.no_role()
         c.form = 'edit'
@@ -431,7 +416,7 @@ class PersonController(BaseController): #Read, Update, List
     def _edit(self, id):
         """UPDATE PERSON"""
         # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_organiser_role)):
+        if not (h.auth.get_person_id() == id or h.auth.has_organiser_role()):
             # Raise a no_auth error
             h.auth.no_role()
 
@@ -497,8 +482,8 @@ class PersonController(BaseController): #Read, Update, List
                 redirect_to(controller='person', action='confirm', confirm_hash=c.person.url_hash)
             else:
                 email(c.person.email_address, render('/person/new_person_email.mako'))
-                # return render('/person/thankyou.mako')
-                return self.finish_login(c.person.email_address)
+                override_login(c.person.email_address)
+                self._redirect_user_optimally()
         else:
             return render('/not_allowed.mako')
 
@@ -524,7 +509,7 @@ class PersonController(BaseController): #Read, Update, List
     @ActionProtector(not_anonymous())
     def view(self, id):
         # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_reviewer_role, h.auth.has_organiser_role)):
+        if not (h.auth.get_person_id() == id or h.auth.has_reviewer_role() or h.auth.has_organiser_role()):
             # Raise a no_auth error
             h.auth.no_role()
 
@@ -578,7 +563,7 @@ class PersonController(BaseController): #Read, Update, List
     @ActionProtector(not_anonymous())
     def offer(self, id):
         # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_reviewer_role, h.auth.has_organiser_role)):
+        if not (h.auth.get_person_id() == id or h.auth.has_reviewer_role() or h.auth.has_organiser_role()):
             # Raise a no_auth error
             h.auth.no_role()
         c.person = Person.find_by_id(id)
@@ -600,7 +585,7 @@ class PersonController(BaseController): #Read, Update, List
     @validate(schema=OfferSchema, form='offer', post_only=True, on_get=True, variable_decode=True)
     def _offer(self,id):
         # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_reviewer_role, h.auth.has_organiser_role)):
+        if not (h.auth.get_person_id() == id or h.auth.has_reviewer_role() or h.auth.has_organiser_role()):
             # Raise a no_auth error
             h.auth.no_role()
         c.person = Person.find_by_id(id)

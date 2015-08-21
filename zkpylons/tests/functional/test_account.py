@@ -41,6 +41,8 @@ class TestPersonController(object):
         resp = app.get(url_for(controller='home'))
         assert isSignedIn(app)
 
+        print resp
+
         # sign out
         resp = resp.goto('/person/signout')
         assert not isSignedIn(app)
@@ -63,6 +65,7 @@ class TestPersonController(object):
 
         resp = app.get('/programme/submit_a_proposal')
         resp = resp.follow()
+        print resp
         assert 'Check your email for activation instructions.' in unicode(resp.body, 'utf-8')
 
         resp = app.get('/register/status')
@@ -284,16 +287,13 @@ class TestPersonController(object):
         resp = f.submit()
         assert "password recovery process is already in progress" in unicode(resp.body, 'utf-8')
 
-    def test_login_failed_warning(self, app, db_session):
+    def test_login_failed_warning(self, app):
         """Test that you get an appropriate warning message from the form when you try to log in with invalid credentials.
         """
 
-        resp = app.get(url_for(controller='person', action='signin', id=None))
-        f = resp.forms['signin-form']
-        f['person.email_address'] = 'test@failure.zk'
-        f['person.password'] = 'broken'
-        resp = f.submit()
-
+        resp = do_login(app, 'test@failure.zk', 'broken')
+        resp = resp.maybe_follow()
+        print resp
         assert "Your sign-in details are incorrect" in unicode(resp.body, 'utf-8')
 
 
@@ -319,9 +319,12 @@ class TestPersonController(object):
         f['person.country']          = 'AUSTRALIA'
         f['person.i_agree']          = '1'
         resp = f.submit(extra_environ=dict(REMOTE_ADDR='0.0.0.0'))
+        assert isSignedIn(app)
+        print resp
 
         # did we get an appropriate page?
         resp = resp.maybe_follow() # Shake out redirects
+        print resp
         assert "Check your email" in unicode(resp.body, 'utf-8')
 
         # check our email
@@ -367,8 +370,8 @@ class TestPersonController(object):
         # Ensure login works
         resp = resp.click('Sign in')
         f = resp.forms['signin-form']
-        f['person.email_address'] = 'testguy@example.org'
-        f['person.password'] = 'test'
+        f['login'] = 'testguy@example.org'
+        f['password'] = 'test'
         resp = f.submit(extra_environ=dict(REMOTE_ADDR='0.0.0.0'))
         assert 'details are incorrect' not in resp
         assert isSignedIn(app)

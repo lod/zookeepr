@@ -12,9 +12,9 @@ def do_login(app, person_or_email_address, password=None):
     resp = app.get(url_for(controller='person', action='signin'), headers={'Cookie':''})
 
     f = resp.forms['signin-form']
-    f['person.email_address'] = email_address
-    f['person.password'] = password
+    f['login'] = email_address
+    f['password'] = password
     return f.submit(extra_environ=dict(REMOTE_ADDR='0.0.0.0'))
 
 def isSignedIn(app):
-    return 'authkit' in app.cookies and len(app.cookies['authkit']) > 15
+    return 'authtkt' in app.cookies and len(app.cookies['authtkt']) > 15
