@@ -4,7 +4,7 @@
 <%def name="toolbox_extra()">
   ${ parent.toolbox_extra() }
 % if c.next_review_id:
-  ${ toolbox.make_link('Skip!', url=h.url_for(controller='proposal', action='review', id=c.next_review_id)) }
+  ${ toolbox.make_link('Skip!', url=h.url_for(controller='proposal', action='view', id=c.next_review_id)) }
 % endif
 </%def>
 
@@ -14,7 +14,7 @@
 
 <p>
 % if c.next_review_id:
-${ h.link_to('Skip!', url=h.url_for(controller='proposal', action='review', id=c.next_review_id)) }
+${ h.link_to('Skip!', url=h.url_for(controller='proposal', action='view', id=c.next_review_id)) }
 % else:
 <em>Can't skip - you have reviewed all the other ${c.proposal.type.name }s!</em>
 % endif
@@ -30,7 +30,7 @@ ${ h.submit('submit', 'Update review') }
 
 <p>
 % if c.next_review_id:
-${ h.link_to('Skip!', url=h.url_for(controller='proposal', action='review', id=c.next_review_id)) } - 
+${ h.link_to('Skip!', url=h.url_for(controller='proposal', action='view', id=c.next_review_id)) } - 
 % endif
 ${ h.link_to('Back to proposal list', url=h.url_for(controller='proposal', action='review_index')) }
 </p>

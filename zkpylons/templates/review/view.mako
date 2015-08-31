@@ -9,7 +9,7 @@
 </p>
 
 <p>
-<b>Proposal Abstract:</b>  (${ h.link_to('go to this proposal', url=h.url_for(controller='proposal', action='review', id=c.review.proposal.id)) })
+<b>Proposal Abstract:</b>  (${ h.link_to('go to this proposal', url=h.url_for(controller='proposal', action='view', id=c.review.proposal.id)) })
 </p>
 <blockquote>
 <p>${ h.truncate(c.review.proposal.abstract, 200) | h}</p>

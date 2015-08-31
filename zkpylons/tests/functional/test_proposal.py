@@ -158,7 +158,6 @@ class TestProposal(object):
 
         # reviewers can review a proposal
         resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
-        resp = resp.click('Review this proposal', index=0)
 
         # get the form and start reviewing!
         f = resp.form
@@ -221,6 +220,146 @@ class TestProposal(object):
 
         atts = Attachment.find_all();
         assert atts == []
+
+    def test_view_proposal_permissions(self, app, db_session):
+        # Rules - people with the following conditions can view a proposal:
+        #   The person who submitted the proposal
+        #   An organiser
+        #   A reviewer
+        # The following can edit a proposal (get an edit proposal link):
+        #   The person who submitted the proposal if proposal_editing is open
+        #   The person who submitted the proposal if they have the late submitter role
+        #   An organiser
+        # The following can review a proposal (get review form):
+        #   A reviewer
+
+        organiser_role = RoleFactory(name = 'organiser')
+        reviewer_role  = RoleFactory(name = 'reviewer')
+        late_role      = RoleFactory(name = 'late_submitter')
+
+        joe_public     = CompletePersonFactory()
+        submitter      = CompletePersonFactory()
+        late_submitter = CompletePersonFactory(roles=[late_role])
+        organiser      = CompletePersonFactory(roles=[organiser_role])
+        reviewer       = CompletePersonFactory(roles=[reviewer_role])
+        super_reviewer = CompletePersonFactory(roles=[organiser_role, reviewer_role])
+        prop = ProposalFactory(people=[submitter,late_submitter])
+
+        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ConfigFactory(key='proposal_editing', value='open')
+        db_session.commit()
+
+        # Not logged in can't access the page, prompted to log in
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        resp = resp.maybe_follow()
+        assert "enter your credentials in the following form" in unicode(resp.body, 'utf-8')
+
+        # Joe public can't access the page, denied
+        do_login(app, joe_public)
+        app.get(url_for(controller='proposal', action='view', id=prop.id), status=403)
+
+        # Submitter, can view, edit, not review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, submitter)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+
+        # Late submitter, can view, edit, not review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, late_submitter)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+
+        # Organiser, can view, edit, not review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, organiser)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+
+        # Reviewer, can view, not edit, review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, reviewer)
+        assert isSignedIn(app)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" not in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" in unicode(resp.body, 'utf-8')
+
+        # Super reviewer, can view, edit, review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, super_reviewer)
+        assert isSignedIn(app)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" in unicode(resp.body, 'utf-8')
+
+        Config.find_by_pk(('general','proposal_editing')).value = 'closed'
+        db_session.commit()
+
+        # Not logged in can't access the page, prompted to log in
+        app.get(url_for(controller='person', action='signout', id=None))
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        resp = resp.maybe_follow()
+        assert "enter your credentials in the following form" in unicode(resp.body, 'utf-8')
+
+        # Joe public can't access the page, denied
+        do_login(app, joe_public)
+        app.get(url_for(controller='proposal', action='view', id=prop.id), status=403)
+
+        # Submitter, can view, not edit, not review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, submitter)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" not in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+
+        # Late submitter, can view, edit, not review
+        app.get(url_for(controller='person', action='signout', id=None))
+        assert not isSignedIn(app)
+        do_login(app, late_submitter)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+
+        # Organiser, can view, edit, not review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, organiser)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+
+        # Reviewer, can view, not edit, review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, reviewer)
+        assert isSignedIn(app)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" not in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" in unicode(resp.body, 'utf-8')
+
+        # Super reviewer, can view, edit, review
+        app.get(url_for(controller='person', action='signout', id=None))
+        do_login(app, super_reviewer)
+        assert isSignedIn(app)
+        resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
+        assert "Proposal for" in unicode(resp.body, 'utf-8')
+        assert "Edit Proposal" in unicode(resp.body, 'utf-8')
+        assert "Proposal Review" in unicode(resp.body, 'utf-8')
+
+
+
+# TODO: Test for when proposal_editing is closed/open/not_open
+
 
 from zk.model.config import Config
 

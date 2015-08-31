@@ -1,8 +1,22 @@
 <%namespace name="toolbox" file="/leftcol/toolbox.mako"/>
 <%inherit file="/base.mako" />
 <% c.signed_in_person = h.signed_in_person() %>
+<%
+	if h.auth.authorized(h.auth.has_organiser_role):
+		allow_edit = True
+	elif c.signed_in_person in c.proposal.people:
+		if c.proposal_editing == 'open':
+			allow_edit = True
+		elif h.auth.authorized(h.auth.has_late_submitter_role):
+			allow_edit = True
+		else:
+			allow_edit = False
+	else:
+		allow_edit = False
+%>
+
 <%def name="toolbox_extra()">
-% if h.auth.authorized(h.auth.has_organiser_role) or ((c.proposal_editing == 'open' or h.auth.authorized(h.auth.has_late_submitter_role)) and c.signed_in_person in c.proposal.people):
+% if allow_edit:
   ${ toolbox.make_link('Edit Proposal', url=h.url_for(controller='proposal', action='edit', id=c.proposal.id)) }
 % endif 
 </%def>
@@ -29,17 +43,10 @@
   <%include file="view_fragment.mako" />
 % endif
 
-% if h.auth.authorized(h.auth.has_organiser_role) or ((c.proposal_editing == 'open' or h.auth.authorized(h.auth.has_late_submitter_role)) and c.signed_in_person in c.proposal.people):
+% if allow_edit:
 ${ toolbox.make_link('Edit Proposal', url=h.url_for(controller='proposal', action='edit',id=c.proposal.id)) }
 % endif
 
-
-## Add review link if the signed in person is a reviewer, but not if they've already reviewed this proposal
-% if h.url_for().endswith('review') is not True and h.url_for().endswith('edit') is not True and 'reviewer' in [x.name for x in c.signed_in_person.roles]:
-<ul><li>
-${ h.link_to('Review this proposal', url=h.url_for(action='review')) }
-</li></ul>
-% endif
 
 % if ('reviewer' in [x.name for x in c.signed_in_person.roles]) or ('organiser' in [x.name for x in c.signed_in_person.roles]):
 <table>

@@ -160,11 +160,26 @@ class ProposalController(BaseController):
         h.flash("Proposal submitted!")
         return redirect_to(controller='proposal', action="index", id=None)
 
-    @dispatch_on(POST="_review")
-    @authorize(h.auth.has_reviewer_role)
-    def review(self, id):
-        c.streams = Stream.select_values()
+
+    @dispatch_on(POST="_view")
+    def view(self, id):
         c.proposal = Proposal.find_by_id(id)
+
+        # Just view your own proposal
+        if h.auth.authorized(h.auth.is_same_zkpylons_submitter(id)):
+            return render('proposal/view.mako')
+
+        # Organisers can also view all proposals
+        if h.auth.authorized(h.auth.has_organiser_role) and not h.auth.authorized(h.auth.has_reviewer_role):
+            return render('proposal/view.mako')
+
+        # If you aren't a reviewer we don't want you to go any further
+        if not h.auth.authorized(h.auth.has_reviewer_role):
+            # Raise a no_auth error
+            h.auth.no_role()
+
+        # Reviewers see review page by default
+        c.streams = Stream.select_values()
         c.signed_in_person = h.signed_in_person()
         c.next_review_id = Proposal.find_next_proposal(c.proposal.id, c.proposal.type.id, c.signed_in_person.id)
 
@@ -185,7 +200,7 @@ class ProposalController(BaseController):
 
     @validate(schema=NewEditReviewSchema(), form='review', post_only=True, on_get=True, variable_decode=True)
     @authorize(h.auth.has_reviewer_role)
-    def _review(self, id):
+    def _view(self, id):
         """Review a proposal.
         """
         c.proposal = Proposal.find_by_id(id)
@@ -214,7 +229,7 @@ class ProposalController(BaseController):
             h.flash("Review Added Successfully")
 
         if c.next_review_id:
-            return redirect_to(action='review', id=c.next_review_id)
+            return redirect_to(action='view', id=c.next_review_id)
 
         h.flash("No more proposals to review")
 
@@ -247,15 +262,6 @@ class ProposalController(BaseController):
 
         return redirect_to(action='view', id=id)
 
-    def view(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role, h.auth.has_reviewer_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.proposal = Proposal.find_by_id(id)
-
-        return render('proposal/view.mako')
 
     @dispatch_on(POST="_edit")
     def edit(self, id):

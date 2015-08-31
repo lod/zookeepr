@@ -6,7 +6,6 @@ from zk.model.review import Review
 from .fixtures import StreamFactory, PersonFactory, ProposalFactory, RoleFactory, ProposalStatusFactory, ReviewFactory
 from .utils import do_login
 
-
 class TestReviewController(object):
 
     def test_create(self, app, db_session):
@@ -23,7 +22,7 @@ class TestReviewController(object):
 
         do_login(app, p)
 
-        resp = app.get('/proposal/%d/review' % prop1.id)
+        resp = app.get('/proposal/%d/view' % prop1.id)
         resp = resp.maybe_follow()
         f = resp.form
         f['review.score'] = -1
@@ -31,7 +30,7 @@ class TestReviewController(object):
         resp = f.submit()
         resp = resp.follow() # Failure indicates form validation error
 
-        resp = app.get('/proposal/%d/review' % prop2.id)
+        resp = app.get('/proposal/%d/view' % prop2.id)
         resp = resp.maybe_follow()
         f = resp.form
         f['review.score'] = 2
@@ -110,7 +109,7 @@ class TestReviewController(object):
         db_session.commit()
 
         do_login(app, p1)
-        resp = app.get('/proposal/%d/review' % prop.id)
+        resp = app.get('/proposal/%d/view' % prop.id)
         f = resp.form
         f['review.comment'] = 'first_review_comment'
         resp = f.submit()
@@ -156,3 +155,4 @@ class TestReviewController(object):
 
         assert r2.comment == 'hi!'
         assert r2.score   == 1
+
