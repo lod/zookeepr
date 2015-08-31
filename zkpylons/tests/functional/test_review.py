@@ -89,7 +89,7 @@ class TestReviewController(object):
 
     @pytest.mark.xfail # Test not yet written
     def test_reviewer_name_hidden_from_submitter(self):
-        """Test taht a revier is anonymouse to submitters"""
+        """Test that a reviewer is anonymouse to submitters"""
         assert False
 
 
@@ -128,14 +128,25 @@ class TestReviewController(object):
         assert len(revs) == 1
         assert revs[0].comment == "second_review_comment"
 
+
+        # TODO: Test Config cfp_miniconf_list, should be used to populate list, when empty section should be hidden
+        #       Maybe - Verification should ensure that added value is on list
+        #       Maybe - Use DB?
+        #       Same for stream, db table stream
+
+        # TODO: Review editing should not show skip option, maybe keep or reset?
         
     def test_edit_review(self, app, db_session):
         """test that a reviewer can edit their review"""
 
+        s1 = StreamFactory(name='Here he comes')
+        s2 = StreamFactory(name='here comes speedracer')
+        s3 = StreamFactory(name='He\'s a demon on wheels')
+
         p1 = PersonFactory(roles=[RoleFactory(name='reviewer')])
         p2 = PersonFactory()
         prop = ProposalFactory(people=[p2])
-        r = ReviewFactory(proposal=prop, reviewer=p1, score=-2, comment="It's a hard luck life")
+        r = ReviewFactory(proposal=prop, reviewer=p1, score=-2, comment="It's a hard luck life", miniconf="Worshipping lod", stream=s2)
         ProposalStatusFactory(name='Withdrawn') # Required by code
         db_session.commit()
 
@@ -144,15 +155,29 @@ class TestReviewController(object):
         resp = resp.maybe_follow()
         assert r.comment in unicode(resp.body, 'utf-8')
         f = resp.form
+
+        # Ensure existing values are populating form
+        assert f['review.score'].value, r.score
+        assert f['review.miniconf'].value, r.miniconf
+        assert f['review.stream'].value, r.stream.id
+        assert f['review.comment'].value, r.comment
+        assert f['review.private_comment'].value, r.private_comment
+
         f['review.comment'] = 'hi!'
         f['review.score'] = 1
+        f['review.miniconf'] = "bow before him"
+        f['review.stream'] = s3.id
+
         resp = f.submit()
         resp = resp.follow()
 
         rid = r.id
+        sid = s3.id
         db_session.expunge_all()
         r2 = Review.find_by_id(rid)
 
         assert r2.comment == 'hi!'
         assert r2.score   == 1
+        assert r2.stream_id == sid
+        assert r2.miniconf == "bow before him"
 
