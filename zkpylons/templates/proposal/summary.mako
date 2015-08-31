@@ -59,7 +59,7 @@ function toggleDiv(id,flagit) {
 %for proposal_type in c.proposal_types:
 
   <a name="${ proposal_type.name }"></a>
-  <h2>${ proposal_type.name }s </h2>
+  <h2>${ proposal_type.name }<% print ("s" if proposal_type.name[-1] != "s" else "") %></h2>
 
   <table id="${ proposal_type.name }">
     <tr>
