@@ -196,7 +196,7 @@ class ProposalController(BaseController):
             return htmlfill.render(form, defaults)
         else:
             c.form = 'new'
-            return render('/review/new.mako')
+            return render('/review/edit.mako')
 
     @validate(schema=NewEditReviewSchema(), form='review', post_only=True, on_get=True, variable_decode=True)
     @authorize(h.auth.has_reviewer_role)

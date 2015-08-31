@@ -11,7 +11,7 @@
       <th>Score</th>
       <th>Stream</th>
       <th>Comment</th>
-      <th>Edit</th>
+      <th>Delete</th>
     </tr>
   </thead>
   <tbody>
@@ -27,7 +27,7 @@
 %     endif
       </td>
       <td>${ h.truncate(r.comment) }</td>
-      <td>${ h.link_to("edit", url=h.url_for(controller='review', action='edit', id=r.id)) }&nbsp;-&nbsp;${ h.link_to("delete", url=h.url_for(controller='review', action='delete', id=r.id)) }</td>
+      <td>${ h.link_to("delete", url=h.url_for(controller='review', action='delete', id=r.id)) }</td>
     </tr>
 
 %   endfor
