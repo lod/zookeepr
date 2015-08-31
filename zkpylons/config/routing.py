@@ -15,7 +15,7 @@ def make_map(config):
 
     # The ErrorController route (handles 404/500 error pages); it should
     # likely stay at the top, ensuring it can always be resolved
-    map.connect('/error/{action}', controller='error')
+    map.connect('/error/{action}',      controller='error')
     map.connect('/error/{action}/{id}', controller='error')
 
     # CUSTOM ROUTES HERE
@@ -43,35 +43,35 @@ def make_map(config):
     map.connect('/programme/schedule/{day}',          controller='schedule', action='table', day=None)
     map.connect('/programme/schedule/video',          controller='schedule', action='video_room', room=None)
     map.connect('/programme/schedule/video/{room}',   controller='schedule', action='video_room', room=None)
-    map.connect('/event/new_proposals',               controller='event', action='new_proposals')
+    map.connect('/event/new_proposals',               controller='event',    action='new_proposals')
 
     # Proposal submission
     map.connect('/programme/submit_a_miniconf', controller='miniconf_proposal', action='new')
-    map.connect('/programme/submit_a_proposal',    controller='proposal', action='new')
+    map.connect('/programme/submit_a_proposal', controller='proposal',          action='new')
 
     # Review
-    map.connect('/proposal/review_index', controller='proposal', action='review_index')
-    map.connect('/proposal/summary',      controller='proposal', action='summary')
-    map.connect('/proposal/approve', controller='proposal', action='approve')
-    map.connect('/review/summary',        controller='review', action='summary')
+    map.connect('/proposal/review_index',  controller='proposal', action='review_index')
+    map.connect('/proposal/summary',       controller='proposal', action='summary')
+    map.connect('/proposal/approve',       controller='proposal', action='approve')
+    map.connect('/review/summary',         controller='review',   action='summary')
 
     # Funding Review
-    map.connect('/funding/review_index', controller='funding', action='review_index')
-    map.connect('/funding/summary',      controller='funding', action='summary')
-    map.connect('/funding/approve',      controller='funding', action='approve')
+    map.connect('/funding/review_index',   controller='funding',        action='review_index')
+    map.connect('/funding/summary',        controller='funding',        action='summary')
+    map.connect('/funding/approve',        controller='funding',        action='approve')
     map.connect('/funding_review/summary', controller='funding_review', action='summary')
 
     # registration and invoicing
-    map.connect('/invoice/{id}/pdf',               controller='invoice', action='pdf', id=None)
-    map.connect('/invoice/remind',                 controller='invoice', action='remind', id=None)
-    map.connect('/invoice/save_new_invoice',       controller='invoice', action='save_new_invoice', id=None)
-    map.connect('/invoice/product_list',           controller='invoice', action='product_list')
+    map.connect('/invoice/{id}/pdf',               controller='invoice',      action='pdf', id=None)
+    map.connect('/invoice/remind',                 controller='invoice',      action='remind', id=None)
+    map.connect('/invoice/save_new_invoice',       controller='invoice',      action='save_new_invoice', id=None)
+    map.connect('/invoice/product_list',           controller='invoice',      action='product_list')
     map.connect('/registration/remind',            controller='registration', action='remind', id=None)
     map.connect('/register/status',                controller='registration', action='status')
     map.connect('/registration/silly_description', controller='registration', action='silly_description')
     map.connect('/registration/generate_badges',   controller='registration', action='generate_badges')
 
-    map.connect('/invoice/generate_hash/{id}',     controller='invoice', action='generate_hash', id=None)
+    map.connect('/invoice/generate_hash/{id}',     controller='invoice',     action='generate_hash', id=None)
     map.connect('/secret/{hash}',                  controller='secret_hash', action='lookup', hash=None)
 
     # account confirmation named route
@@ -88,11 +88,11 @@ def make_map(config):
 
     # booklet
     map.connect('/registration/professionals_latex', controller='registration', action='professionals_latex')
-    map.connect('/proposal/latex',                  controller='proposal', action='latex')
+    map.connect('/proposal/latex',                   controller='proposal',     action='latex')
 
     # product
     map.connect('/product/new/{cat_id}', controller='product', action='new')
-    map.connect('/product/json', controller='product', action='json')
+    map.connect('/product/json',         controller='product', action='json')
 
     # checkin
     map.connect('/checkin/{action}', controller='checkin')
@@ -104,8 +104,8 @@ def make_map(config):
     map.connect('/registration/{rego_id}/new_note', controller='rego_note', action='new', id=None)
 
     # photocomp
-    map.connect('/photocomp/edit', controller='photocomp', action='edit', id=None)
-    map.connect('/photocomp/', controller='photocomp', action='index')
+    map.connect('/photocomp/edit',             controller='photocomp', action='edit', id=None)
+    map.connect('/photocomp/',                 controller='photocomp', action='index')
     map.connect('/photocomp/photo/{filename}', controller='photocomp', action='photo')
 
     # UML Graphs
@@ -119,9 +119,9 @@ def make_map(config):
 
     # Note to wary travellers; an ID can never be 'new' because of this
     # routing rule
-    map.connect('/{controller}/new', action='new')
+    map.connect('/{controller}/new',        action='new')
     map.connect('/{controller}/new_submit', action='new_submit')
-    map.connect('/{controller}', action='index')
+    map.connect('/{controller}',            action='index')
 
     # default action when not specified is 'view'
     map.connect('/{controller}/{id}', action='view')
@@ -131,6 +131,6 @@ def make_map(config):
     # map.connect('*url', controller='wiki', action='view')
     map.connect('*url', controller='db_content', action='page', id=None)
     #map.connect('/db_content/view', controller='db_content', action='view', id=None)
-    map.connect('*url', controller='not_found', action='view')
+    map.connect('*url', controller='not_found',  action='view')
 
     return map
