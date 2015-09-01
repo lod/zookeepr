@@ -13,6 +13,7 @@ import webhelpers.constants
 from datetime import datetime
 import simplejson as json
 import markupsafe
+import urllib
 
 try:
     from webhelpers.pylonslib import secure_form
@@ -354,10 +355,33 @@ def ticket_percentage_text(percent, earlybird = False):
         else:
             return "%d%% tickets sold." % percent
 
-link_re = re.compile(r'\[url\=((http:\/\/|ftp:\/\/)?(([a-z]+[a-z0-9]*[\.|\-]?[a-z]+[a-z0-9]*[a-z0-9]+){1,4}\.[a-z]{2,4})([^ \t\n]+))\](.*)\[\/url\]')
+link_re = re.compile(r'\[url=(.*?)\](.*?)\[/url\]')
 def url_to_link(body):
-    """ Converts [url=http://example.com]site[/url] into <a href="http://www.example.com">site</a>> """
-    return link_re.sub(r'<a href="\1" title="\1">\6</a>', body)
+    """ Converts bbcode urls
+        [url=http://example.com]site[/url] becomes <a href="http://www.example.com">site</a>
+        This is designed to be used as a function or as a mako filter.
+        It uses markupsafe to allow further filtering to be applied.
+    """
+    # Can't just do a link_re.sub()... markupsafe isn't that awesome
+    # Instead use the re to split the string then reassemble it, markupsafely, by hand
+    parts = link_re.split(body)
+
+    # 0th element is always starting text, even if it is an empty string
+    # 1st element is match url part
+    # 2nd element is match link text part
+    # 3rd element is the 0th of the next grouping - pattern repeats
+    # last element is the end text
+
+    # Note the split elements may be markupsafe encoded - need to avoid unintended conversions
+
+    res = ""
+    for i in range(0,len(parts),3):
+        res += parts[i]
+        if i+1 < len(parts):
+            safe_url = urllib.quote_plus(markupsafe.Markup(parts[i+1]).unescape(), safe=":/?#&=")
+            res += markupsafe.Markup('<a href="' + safe_url + '">') + parts[i+2] + markupsafe.Markup("</a>")
+
+    return res
 
 def signed_in_person():
     email_address = request.environ.get("REMOTE_USER")

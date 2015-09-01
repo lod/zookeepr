@@ -69,18 +69,18 @@ ${ c.talk.url }
 <div id="proposal">
 <div class="abstract">
 <blockquote>
-<p>${ h.line_break(h.url_to_link(c.talk.abstract)) | n}</p>
+<p>${ c.talk.abstract | h.url_to_link, h.line_break}</p>
 </blockquote>
 </div>
 
 % for person in c.talk.people:
-<h2>${ person.firstname | h} ${ person.lastname | h}</h2>
+<h2>${ person.fullname }</h2>
 <div class="bio">
 <blockquote>
 <div style="float: right; padding-left: 5px; padding-bottom: 5px; "><img src="${person.avatar_url()}" alt=""></div>
 <p>
 %   if person.bio:
-${ h.line_break(h.url_to_link(person.bio)) | n  }
+${ person.bio | h.url_to_link, h.line_break}
 %   else:
 [none provided]
 %   endif
