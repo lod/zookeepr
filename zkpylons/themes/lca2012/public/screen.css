@@ -1694,3 +1694,17 @@ img.image
 {
     background: #ffcc88 url('/images/icons/dialog-warning.png') no-repeat 10px 50%;
 }
+
+/* Popup divs */
+.small_popup, .large_popup {
+  background-color : #EEE;
+  border           : 1px solid #333;
+  padding          : 4px;
+  position         : absolute;
+  display          : none;
+  font-size        : 8pt;
+}
+
+.small_popup { width : 200px; }
+.large_popup { width : 500px; }
+

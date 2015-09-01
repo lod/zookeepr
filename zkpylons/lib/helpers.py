@@ -177,10 +177,11 @@ def slideshow(set, small=None):
         return "no images found"
 
 
-break_re = re.compile(r'(\n|\r\n)(?!\s*<(li|ul|ol)>)')
 def line_break(text):
     """ Turn line breaks into <br>'s """
-    return break_re.sub('<br />', text)
+    # markupsafe prevents mako from escaping our additions
+    first = text.replace('\r\n', markupsafe.Markup('<br>'))
+    return first.replace('\n', markupsafe.Markup('<br>'))
 
 def yesno(value):
     """ Display a read-only checkbox for the value provided """

@@ -1,67 +1,43 @@
 <%inherit file="/base.mako" />
 
-<script language="Javascript">
-<!--
-function toggleDiv(id,flagit) {
-    if (flagit=="1"){
-        if (document.layers) document.layers[''+id+''].visibility = "show"
-        else if (document.all) document.all[''+id+''].style.visibility = "visible"
-        else if (document.getElementById) document.getElementById(''+id+'').style.visibility = "visible"
-    }
-    else
-        if (flagit=="0"){
-            if (document.layers) document.layers[''+id+''].visibility = "hide"
-            else if (document.all) document.all[''+id+''].style.visibility = "hidden"
-            else if (document.getElementById) document.getElementById(''+id+'').style.visibility = "hidden"
-        }
-}
-//-->
-</script>
-<style type="text/css">
-.commentdiv {
-    background-color:#F9F9F9;
-    border:1px dashed Blue;
-    padding:4px;
-    position:absolute;
-    visibility:hidden;
-    width:200px;
-    font-family:Verdana,Arial,Helvetica,san-serif;
-    font-size:8pt;
-}
+<%def name="title()" >
+Reviews - ${ parent.title() }
+</%def>
 
-.biodiv {
-    background-color:#F9F9F9;
-    border:1px dashed Blue;
-    padding:4px;
-    position:absolute;
-    visibility:hidden;
-    width:500px;
-    font-family:Verdana,Arial,Helvetica,san-serif;
-    font-size:8pt;
-}
+<%def name="contents()">
+% for group in c.groups:
+  <li><a href="#${group.simple_name}">${group.name} proposals</a></li>
+% endfor
+</%def>
+
+<script language="Javascript">
+
+h_show = function () { jQuery(this).find("div").show() };
+h_hide = function () { jQuery(this).find("div").hide() };
+
+jQuery(document).ready(function() {
+  jQuery('.proposals td').not('.person').hover(h_show, h_hide)
+  jQuery('.proposals td.person > div').hover(h_show, h_hide)
+});
+
+</script>
+
+<style type="text/css">
+
+td.score { text-align: center }
+td.person > div { display: inline }
 
 </style>
 
 
 <h2>Review Summary</h2>
 
+%for group in c.groups:
 
-<p>
-  <ul>
-    <li>Mouse over reviewers name for their comments
-    <li>Mouse over scores for score from each reviewer
-    <li>Mouse over reviewer name for Bio and Experience
-    <li>Mouse over stream for Stream Stats
-  </ul>
-</p>
+  <a name="${ group.simple_name }"></a>
+  <h2>${ group.name } proposals</h2>
 
-
-%for proposal_type in c.proposal_types:
-
-  <a name="${ proposal_type.name }"></a>
-  <h2>${ proposal_type.name }<% print ("s" if proposal_type.name[-1] != "s" else "") %></h2>
-
-  <table id="${ proposal_type.name }">
+  <table class="zebra proposals">
     <tr>
       <th>#</th>
       <th>Proposal</th>
@@ -71,107 +47,87 @@ function toggleDiv(id,flagit) {
       <th>Winning Stream</th>
     </tr>
 
-%   for result in c.proposal[proposal_type]:
-<%    proposal = result.Proposal %>
-
-    <tr class="${ h.cycle('even', 'odd') }">
+%   for proposal in group.proposals:
+    <tr>
       <td>
-        <div onMouseOver="toggleDiv('${ "assistance%s" % proposal.id | h}',1)" onMouseOut="toggleDiv('${ "assistance%s" % proposal.id | h}',0)">
-          ${ h.link_to(proposal.id, url=h.url_for(controller='proposal', action='review', id=proposal.id)) }
-        </div>
+        ${ h.link_to(proposal.id, url=h.url_for(controller='proposal', action='view', id=proposal.id)) }
       </td>
       <td>
-        <div onMouseOver="toggleDiv('${ "proposal%s" % proposal.id | h}',1)" onMouseOut="toggleDiv('${ "proposal%s" % proposal.id | h}',0)">
-          ${ h.link_to(proposal.title, url=h.url_for(controller='proposal', action='review', id=proposal.id)) }
+        ${ h.link_to(proposal.title, url=h.url_for(controller='proposal', action='view', id=proposal.id)) }
+        <div class="large_popup">
+          <strong>Abstract:</strong>
+          <p>${ proposal.abstract | h.line_break}</p>
         </div>
-        <div id="${ "proposal%s" % proposal.id }" class="biodiv"><strong>Abstract:</strong><p>${ h.line_break(proposal.abstract) |n }</p></pre></div>
       </td>
-      <td>
-%     for person in proposal.people:
-        <div onMouseOver="toggleDiv('${ "bio%s" % person.id | h}',1)" onMouseOut="toggleDiv('${ "bio%s" % person.id | h}',0)">
-          ${ person.fullname }, 
-        </div>
-        <div id="${ "bio%s" % person.id | h}" class="biodiv">${ person.firstname + " " + person.lastname |h}<br><strong>Bio:</strong><p>${ person.bio |h }</p><strong>Experience:</strong><p> ${person.experience |h}</p></div>
-%     endfor
+      <td class='person'>
+%       for person in proposal.people:
+          <div>
+            ${ person.fullname },
+            <div id="${ "bio%s" % person.id }" class="large_popup">
+              ${ person.fullname }
+              <br>
+              <strong>Bio:</strong>
+              <p>${ person.bio }</p>
+              <strong>Experience:</strong>
+              <p> ${person.experience }</p>
+            </div>
+          </div>
+%       endfor
       </td>
-      <td>
-        <div onMouseOver="toggleDiv('${ "score%s" % proposal.id | h}',1)" onMouseOut="toggleDiv('${ "score%s" % proposal.id | h}',0)">
-%     if result.average is None:
+      <td class='score'>
+%       if proposal.average_score is None:
           <b>No Reviews</b>
-%     else:
-          ${ "%0.2f" % result.average | h }
-%     endif
-        </div>
-        <div id="${ "score%s" % proposal.id | h}" class="commentdiv">
-%     for review in proposal.reviews:
-          ${ review.reviewer.fullname }:  ${ review.score }<br />
-%     endfor
-        </div>
+%       else:
+          ${ "%0.2f" % proposal.average_score }
+          <div class="small_popup">
+%           for review in proposal.reviews:
+              ${ review.reviewer.fullname }:  ${ review.score }
+              <br>
+%           endfor
+          </div>
+%       endif
       </td>
       <td>
-%     for review in proposal.reviews:
-%       if review.comment or review.private_comment:
-      <!--
-      link_to doesn't let us pass javascript tags
-      -->
-        <a href="${ h.url_for(controller='review', action='view', id=review.id) }" onMouseOver="toggleDiv('${ "%s%s" % (review.id, review.reviewer.id) |h}',1)" onMouseOut="toggleDiv('${ "%s%s" % (review.id, review.reviewer.id) | h}',0)">${ review.reviewer.fullname | h}</a>, 
-        <div id="${ "%s%s" % (review.id, review.reviewer.id) | h}" class="commentdiv">
-          <b>${ review.reviewer.fullname |h } Comments:</b> ${ review.comment |h }<br />
-          <br />
-          <b>${ review.reviewer.fullname |h } Private Comments:</b> ${ review.private_comment |h }
-        </div>
-%       else:
-        ${ h.link_to(review.reviewer.fullname , url=h.url_for(controller='review', action='view', id=review.id)) }, 
-%       endif
-%     endfor
+%       for review in proposal.reviews:
+          ${ h.link_to(review.reviewer.fullname, url=h.url_for(controller='review', action='view', id=review.id)) }, 
+%         if review.comment or review.private_comment:
+            <div class="small_popup">
+              <b>${ review.reviewer.fullname } Comments:</b> ${ review.comment }<br />
+              <br>
+              <b>${ review.reviewer.fullname } Private Comments:</b> ${ review.private_comment }
+            </div>
+%         endif
+%       endfor
       </td>
 
 <%
-        streams = {}
-        for review in proposal.reviews:
-            if review.stream is not None:
-                if review.stream.name in streams:
-                    streams[review.stream.name] += 1
-                else:
-                    streams[review.stream.name] = 1
+    streams = {}
+    for review in proposal.reviews:
+      if review.stream is not None:
+        streams[review.stream.name] = streams.get(review.stream.name, 0) + 1
 
-        stream = ""
-        stream_stats = ""
-        stream_score = 0
-        for s in streams:
-            stream_stats += s + ": %s<br>" % streams[s]
-            if streams[s] > stream_score:
-                stream = s
-                stream_score = streams[s]
-            # endif
-        endfor
+    highest_stream_score = max(streams.values() or [0])
+    highest_streams = [k for k,v in streams.items() if v == highest_stream_score]
+    if len(highest_streams) > 1:
+      highest_stream = "TIE"
+    elif len(highest_streams) == 0:
+      highest_stream = "None"
+    else:
+      highest_stream = highest_streams[0]
 %>
 
       <td>
-        <div onMouseOver="toggleDiv('${ "stream%s" % proposal.id | h}',1)" onMouseOut="toggleDiv('${ "stream%s" % proposal.id | h}',0)">
-          ${ stream } (${ stream_score })
-        </div>
-        <div id="${ "stream%s" % proposal.id | h}" class="biodiv">${ stream_stats | n}</div>
+        ${ highest_stream } (${ highest_stream_score })
+%       if streams:
+          <div class="large_popup">
+%           for stream, score in streams.items():
+              ${ stream } : ${ str(score) }
+              <br>
+%           endfor
+          </div>
+%       endif
       </td>
     </tr>
-%   endfor # proposals
+%   endfor group.proposals
   </table>
-% endfor #proposal_types
-
-
-<%def name="title()" >
-Reviews - ${ parent.title() }
-</%def>
-
-<%def name="contents()">
-<%
-  menu = ''
-
-  import re
-
-  for proposal_type in c.proposal_types:
-    proposal_type.name = re.compile('([^a-zA-Z0-9])').sub('', proposal_type.name)
-    menu += '<li><a href="#' + proposal_type.name + '">' + proposal_type.name + ' proposals</a></li>'
-  return menu
-%>
-</%def>
+% endfor c.groups

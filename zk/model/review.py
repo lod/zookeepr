@@ -69,7 +69,3 @@ class Review(Base):
     @classmethod
     def by_reviewer(cls, reviewer):
         return cls.query().filter_by(reviewer=reviewer)
-
-    @classmethod
-    def stats_query(cls):
-        return Session.query(sa.func.count(cls.score).label('reviews'), (sa.func.count(1)-sa.func.count(cls.score)).label('declined'), sa.func.avg(cls.score).label('average'))

@@ -1,10 +1,34 @@
 import pytest
 from routes import url_for
 
+from HTMLParser import HTMLParser
+
 from zk.model.review import Review
 
-from .fixtures import StreamFactory, PersonFactory, ProposalFactory, RoleFactory, ProposalStatusFactory, ReviewFactory
+from .fixtures import StreamFactory, PersonFactory, ProposalFactory, RoleFactory, ProposalStatusFactory, ReviewFactory, CompletePersonFactory
 from .utils import do_login
+
+class TableParser(HTMLParser):
+    def __init__(self, *args, **kwargs):
+        HTMLParser.__init__(self, *args, **kwargs) # Old style class
+        self.tables = []
+        self.in_cell = False
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.tables.append([])
+        if tag == "tr":
+            self.tables[-1].append([])
+        if tag == "td" or tag == "th":
+            self.in_cell = True
+            self.tables[-1][-1].append("")
+    def handle_endtag(self, tag):
+        if tag == "td" or tag == "th":
+            self.in_cell = False
+    def handle_data(self, data):
+        if self.in_cell:
+            self.tables[-1][-1][-1] += data
+
+
 
 class TestReviewController(object):
 
@@ -181,3 +205,115 @@ class TestReviewController(object):
         assert r2.stream_id == sid
         assert r2.miniconf == "bow before him"
 
+    def test_reviewer_summary(self, app, db_session):
+        """ Test display of /review/summary page """
+
+        r_reviewer = RoleFactory(name='reviewer')
+        reviewer = CompletePersonFactory(roles=[r_reviewer])
+        chair = CompletePersonFactory(roles=[RoleFactory(name='proposals_chair')])
+        organiser = CompletePersonFactory(roles=[RoleFactory(name='organiser')])
+
+        # Using complete people to get names
+        r2 = CompletePersonFactory(roles=[r_reviewer])
+        r3 = CompletePersonFactory(roles=[r_reviewer])
+        r4 = CompletePersonFactory(roles=[r_reviewer])
+        r5 = CompletePersonFactory(roles=[r_reviewer])
+
+        ReviewFactory(reviewer=reviewer, score=1)
+        ReviewFactory(reviewer=reviewer, score=2)
+        ReviewFactory(reviewer=reviewer, score=3)
+        ReviewFactory(reviewer=reviewer, score=4)
+        ReviewFactory(reviewer=reviewer, score=5)
+        # Average = 15/5 = 3.00
+
+        ReviewFactory(reviewer=r2, score=0)
+        ReviewFactory(reviewer=r2, score=-5)
+        ReviewFactory(reviewer=r2, score=-3)
+        ReviewFactory(reviewer=r2, score=6)
+        ReviewFactory(reviewer=r2, score=2)
+        # Average = 0/5 = 0.00
+
+        ReviewFactory(reviewer=r3, score=None)
+        ReviewFactory(reviewer=r3, score=None)
+        ReviewFactory(reviewer=r3, score=None)
+        # Average = None
+
+        ReviewFactory(reviewer=r4, score=0)
+        ReviewFactory(reviewer=r4, score=None)
+        ReviewFactory(reviewer=r4, score=-3)
+        ReviewFactory(reviewer=r4, score=-6)
+        ReviewFactory(reviewer=r4, score=2)
+        ReviewFactory(reviewer=r4, score=5)
+        ReviewFactory(reviewer=r4, score=-11)
+        # Average = -13/6 = 2.1666
+
+        # r5 has no reviews
+
+        db_session.commit()
+
+        do_login(app, reviewer)
+        resp = app.get(url_for(controller='review', action='summary'))
+        parser = TableParser()
+        parser.feed(resp.body)
+        table = parser.tables[0]
+
+        assert len(table) == 6 # Five reviewers + heading
+
+        assert table[1][0] == reviewer.fullname
+        assert table[2][0] == r2.fullname
+        assert table[3][0] == r3.fullname
+        assert table[4][0] == r4.fullname
+        assert table[5][0] == r5.fullname
+
+        # Number of reviews
+        assert table[1][1] == "5"
+        assert table[2][1] == "5"
+        assert table[3][1] == "0"
+        assert table[4][1] == "6"
+        assert table[5][1] == "0"
+
+        # Number of declined reviews
+        assert table[1][2] == "0"
+        assert table[2][2] == "0"
+        assert table[3][2] == "3"
+        assert table[4][2] == "1"
+        assert table[5][2] == "0"
+
+        # Average score isn't visible
+        assert len(table[0]) == 3
+        assert len(table[1]) == 3
+        assert len(table[2]) == 3
+        assert len(table[3]) == 3
+        assert len(table[4]) == 3
+        assert len(table[5]) == 3
+
+
+        # Chair can see average scores
+        do_login(app, chair)
+        resp = app.get(url_for(controller='review', action='summary'))
+        parser = TableParser()
+        parser.feed(resp.body)
+        chair_table = parser.tables[0]
+
+        # Table should be the same except for the extra column
+        assert len(chair_table) == 6 # Five reviewers + heading
+        assert chair_table[0][0:3] == table[0][0:3]
+        assert chair_table[1][0:3] == table[1][0:3]
+        assert chair_table[2][0:3] == table[2][0:3]
+        assert chair_table[3][0:3] == table[3][0:3]
+        assert chair_table[4][0:3] == table[4][0:3]
+        assert chair_table[5][0:3] == table[5][0:3]
+
+        # Average score
+        assert chair_table[1][3] == "3.00"
+        assert chair_table[2][3] == "0.00"
+        assert chair_table[3][3] == "0.00"
+        assert chair_table[4][3] == "-2.17"
+        assert chair_table[5][3] == "0.00"
+
+        # Organiser can also see average scores
+        do_login(app, organiser)
+        resp = app.get(url_for(controller='review', action='summary'))
+        parser = TableParser()
+        parser.feed(resp.body)
+        assert parser.tables[0] == chair_table

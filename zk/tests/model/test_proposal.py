@@ -125,3 +125,15 @@ class TestProposal(object):
         assert person2 not in proposal.people
 
         assert review in proposal.reviews
+
+    def test_average_score(self, db_session):
+        prop = ProposalFactory()
+        r1   = ReviewFactory(proposal=prop, score=5)
+        r2   = ReviewFactory(proposal=prop, score=-10)
+        r3   = ReviewFactory(proposal=prop, score=23)
+        r4   = ReviewFactory(proposal=prop, score=None)
+        db_session.flush()
+
+        # 5-10+23/3 == 18/3 == 6
+        assert prop.average_score == 6
+

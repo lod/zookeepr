@@ -8,6 +8,8 @@ from pylons.decorators.rest import dispatch_on
 from formencode import validators, htmlfill
 from formencode.variabledecode import NestedVariables
 
+from collections import namedtuple
+
 from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, ReviewSchema
 import zkpylons.lib.helpers as h
@@ -18,12 +20,12 @@ from authkit.permissions import ValidAuthKitUser
 from zkpylons.lib.mail import email
 
 from zkpylons.model import meta
-from zkpylons.model import Review, Stream, Person, ProposalType, Proposal
+from zkpylons.model import Review, Stream, Person, ProposalType, Proposal, Role
 
 log = logging.getLogger(__name__)
 
 class ReviewController(BaseController):
-    @authorize(h.auth.has_reviewer_role)
+    @authorize(h.auth.Or(h.auth.has_reviewer_role, h.auth.has_organiser_role, h.auth.has_proposals_chair_role))
     def __before__(self, **kwargs):
         c.streams = Stream.select_values()
 
@@ -32,12 +34,14 @@ class ReviewController(BaseController):
             h.auth.no_role()
 
     @dispatch_on(POST="_edit") 
+    @authorize(h.auth.has_reviewer_role)
     def edit(self, id):
         c.review = Review.find_by_id(id)
 
         redirect_to(h.url_for(controller='proposal', id=c.review.proposal.id, action='view'))
 
     @dispatch_on(POST="_delete")
+    @authorize(h.auth.has_reviewer_role)
     def delete(self, id):
         c.review = Review.find_by_id(id)
 
@@ -61,8 +65,19 @@ class ReviewController(BaseController):
         h.flash("Review Deleted")
         redirect_to(controller='review', action='index')
 
+
     def summary(self):
-        c.summary = Person.find_review_summary().all()
+        ReviewerSummary = namedtuple('ReviewerSummary', ['reviewer', 'reviewed', 'declined', 'average'])
+
+        c.reviewers = []
+        for p in Role.find_by_name('reviewer').people:
+            reviewed = len([x for x in p.reviews if x.score is not None])
+            declined = len([x for x in p.reviews if x.score is None])
+            average  = float(sum([x.score or 0 for x in p.reviews]))/max(reviewed,1)
+            c.reviewers.append(ReviewerSummary(p.fullname, reviewed, declined, average))
+
+        c.show_average = h.auth.authorized(h.auth.Or(h.auth.has_organiser_role, h.auth.has_proposals_chair_role))
+
         return render('review/summary.mako')
 
     def index(self):

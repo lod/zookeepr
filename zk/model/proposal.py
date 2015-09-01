@@ -217,6 +217,10 @@ class Proposal(Base):
             return "Under Review"
     proposer_status = property(_get_proposer_status)
 
+    def _get_average_score(self):
+        return Session.query(sa.func.avg(Review.score)).filter(Review.proposal_id==self.id, Review.score != None).scalar()
+    average_score = property(_get_average_score)
+
     @classmethod
     def find_by_id(cls, id, abort_404 = True):
         result = Session.query(Proposal).filter_by(id=id).first()
@@ -231,6 +235,10 @@ class Proposal(Base):
     @classmethod
     def find_all(cls):
         return Session.query(Proposal).order_by(Proposal.id).all()
+
+    @classmethod
+    def count_all(cls):
+        return Session.query(Proposal).count()
 
     @classmethod
     def find_all_by_accommodation_assistance_type_id(cls, id, abort_404 = True):
@@ -309,8 +317,3 @@ class Proposal(Base):
         else:
             # looks like you've reviewed everything!
             return None
-
-    @classmethod
-    def find_review_summary(cls):
-        from review import Review
-        return Review.stats_query().join(cls).add_entity(cls).group_by(cls)

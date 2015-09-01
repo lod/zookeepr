@@ -274,9 +274,9 @@ class ReviewFactory(_ModelFactory):
     miniconf        = factory.Sequence(lambda n: "miniconf %03d" % n)
     comment         = factory.Sequence(lambda n: "comment %03d" % n)
     private_comment = factory.Sequence(lambda n: "private_comment %03d" % n)
+    reviewer        = factory.SubFactory(PersonFactory)
+    proposal        = factory.SubFactory(ProposalFactory)
     # TODO: not null items
-    #proposal_id
-    #reviewer_id
     #private_comment
     #creation_timestamp
     #last_modification_timestamp

@@ -8,6 +8,10 @@ from pylons.decorators.rest import dispatch_on
 from formencode import validators, htmlfill, ForEach
 from formencode.variabledecode import NestedVariables
 
+import re
+import random
+from collections import namedtuple
+
 from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, PersonValidator, ProposalValidator, FileUploadValidator, PersonSchema, ProposalTypeValidator, TargetAudienceValidator, ProposalStatusValidator, AccommodationAssistanceTypeValidator, TravelAssistanceTypeValidator
 import zkpylons.lib.helpers as h
@@ -343,33 +347,50 @@ class ProposalController(BaseController):
     @authorize(h.auth.has_reviewer_role)
     def review_index(self):
         c.person = h.signed_in_person()
-        c.num_proposals = 0
         reviewer_role = Role.find_by_name('reviewer')
         c.num_reviewers = len(reviewer_role.people)
+
+        ProposalGroup = namedtuple('ProposalGroup', ['name', 'simple_name', 'proposals', 'min_reviews'])
+        c.groups = []
         for pt in c.proposal_types:
-            stuff = Proposal.find_all_by_proposal_type_id(pt.id, include_withdrawn=False)
-            c.num_proposals += len(stuff)
-            setattr(c, '%s_collection' % pt.name, stuff)
-        for aat in c.accommodation_assistance_types:
-            stuff = Proposal.find_all_by_accommodation_assistance_type_id(aat.id)
-            setattr(c, '%s_collection' % aat.name, stuff)
-        for tat in c.travel_assistance_types:
-            stuff = Proposal.find_all_by_travel_assistance_type_id(tat.id)
-            setattr(c, '%s_collection' % tat.name, stuff)
+            proposals = Proposal.find_all_by_proposal_type_id(pt.id, include_withdrawn=False)
+
+            # Get rid of the reviewer's proposals
+            proposals = [x for x in proposals if c.person not in x.people]
+
+            # Get rid of proposals the review has already reviewed
+            proposals = [x for x in proposals if c.person not in [r.reviewer for r in x.reviews]]
+
+            # Shuffle then sort each group of proposals
+            # This ensures that more needy items are at the top, but equally needy items are randomised
+            random.shuffle(proposals)
+            proposals.sort(cmp = lambda x, y: cmp(len(x.reviews), len(y.reviews)))
+
+            c.groups.append(ProposalGroup(
+                name        = pt.name,
+                simple_name = re.sub('\W', '', pt.name),
+                proposals   = proposals,
+                min_reviews = min([len(x.reviews) for x in proposals] or [0]),
+                ))
+
+        # Refetch because we have trimmed so many proposals out, this includes withdrawn talks - ok to be a few out
+        c.num_proposals = Proposal.count_all()
 
         return render('proposal/list_review.mako')
 
     @authorize(h.auth.has_reviewer_role)
     def summary(self):
-        c.proposal = {}
-        for proposal_type in c.proposal_types:
-            c.proposal[proposal_type] = Proposal.find_review_summary().filter(Proposal.type==proposal_type).filter(Proposal.status!=ProposalStatus.find_by_name('Withdrawn')).order_by('average').all()
-        for aat in c.accommodation_assistance_types:
-            stuff = Proposal.find_all_by_accommodation_assistance_type_id(aat.id)
-            setattr(c, '%s_collection' % aat.name, stuff)
-        for tat in c.travel_assistance_types:
-            stuff = Proposal.find_all_by_travel_assistance_type_id(tat.id)
-            setattr(c, '%s_collection' % tat.name, stuff)
+        ProposalGroup = namedtuple('ProposalGroup', ['name', 'simple_name', 'proposals', 'min_reviews'])
+        c.groups = []
+        for pt in c.proposal_types:
+            proposals = Proposal.find_all_by_proposal_type_id(pt.id, include_withdrawn=False)
+            c.groups.append(ProposalGroup(
+                name        = pt.name,
+                simple_name = re.sub('\W', '', pt.name),
+                proposals   = proposals,
+                min_reviews = min([len(x.reviews) for x in proposals] or [0]),
+                ))
+
         return render('proposal/summary.mako')
 
     def index(self):
