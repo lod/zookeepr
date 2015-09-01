@@ -1,5 +1,6 @@
 <%page args="parent" />
-% if parent.contents() != '':
+
+% if capture(parent.contents).strip() != '':
                             <div class="netv-block">
                                 <div class="netv-block-tl"></div>
                                 <div class="netv-block-tr"></div>
@@ -27,4 +28,4 @@
                                     <div class="cleared"></div>
                                 </div>
                             </div>
- % endif
+% endif

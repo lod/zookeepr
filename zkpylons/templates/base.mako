@@ -80,6 +80,10 @@
     <div id="columns">
       <div id="col-left">
         <div id="sidebar">
+            <!-- block-content -->
+            <%include file="/leftcol/contents.mako" args="parent=self" />
+            <!-- /block-content -->
+
           <h3>Toolbox</h3>
             <!-- block-content -->
             <%include file="/leftcol/toolbox.mako" args="parent=self" />
