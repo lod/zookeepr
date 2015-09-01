@@ -217,13 +217,13 @@ if "not_australian" in c.registration_request and c.registration_request['not_au
         <b>Under 18</b> ${ h.yesno(not registration.over18) | n }<br><br>
 %   endif
 % if registration.notes:
-            ${ '<br><br>'.join(["<b>Note by <i>" + n.by.firstname + " " + n.by.lastname + "</i> at <i>" + n.last_modification_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") + "</i>:</b><br>" + h.line_break(n.note) for n in registration.notes]) + '<br><br>' | n}
+            ${ '<br><br>'.join(["<b>Note by <i>" + n.by.fullname + "</i> at <i>" + n.last_modification_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") + "</i>:</b><br>" + h.line_break(n.note) for n in registration.notes]) + '<br><br>' | n}
 % endif
 %   if registration.diet:
-            ${ '<b>Diet:</b> %s<br><br>' % (registration.diet) | n}
+            <b>Diet:</b> ${ registration.diet } <br><br>
 %   endif
 %   if registration.special:
-            ${ '<b>Special Needs:</b> %s<br><br>' % (registration.special) | n}
+            <b>Special Needs:</b> ${ registration.special } <br><br>
 %   endif
         ${ h.link_to("Add New Note", h.url_for(controller='rego_note', action='new', rego_id=registration.id)) }
         </td>

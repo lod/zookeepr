@@ -17,7 +17,7 @@
     <tr class="${ h.cycle('even', 'odd')}">
         <td>${ h.link_to(str(d.id) + ' (edit)', url=h.url_for(controller='rego_room', action='edit', id=d.id)) }</td>
         <td>${ h.link_to(d.rego.person.fullname, h.url_for(controller='person', action='view', id=d.rego.person.id)) }, ${ h.link_to('View Registration', h.url_for(controller='registration', action='view', id=d.rego.id)) }</td>
-        <td>${ h.line_break(d.room) }
+        <td>${ d.room | h.line_break }
         <td>${ h.link_to(d.by.fullname, h.url_for(controller='person', action='view', id=d.by.id)) }</td>
         <td>${ d.creation_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") | n}</td>
         <td>${ d.last_modification_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") | n}</td>

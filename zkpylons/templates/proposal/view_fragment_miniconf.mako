@@ -23,7 +23,7 @@ ${ c.proposal.type.name }
 <em>Abstract:</em>
 </p>
 <blockquote>
-<p>${ h.line_break(c.proposal.abstract) | n}</p>
+<p>${ c.proposal.abstract | h.line_break}</p>
 </blockquote>
 </div>
 
@@ -53,7 +53,7 @@ ${ h.link_to('(email address only stalk)', url='http://google.com/search?q=%s' %
 </p>
 <blockquote><p>
 %   if person.bio:
-${ h.line_break(h.util.html_escape(person.bio)) |n}
+${ person.bio  |h.line_break}
 %   else:
 [none provided]
 %   endif

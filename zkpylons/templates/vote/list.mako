@@ -19,7 +19,7 @@
         <td>${ h.link_to(str(d.id) + ' (edit)', url=h.url_for(controller='vote', action='edit', id=d.id)) }</td>
         <td>${ h.link_to(d.event.name, h.url_for(controller='event', action='view', id=d.event.id)) }</td>
         <td>${ d.vote_value }</td>
-        <td>${ h.line_break(d.comment) }
+        <td>${ d.comment | h.line_break }
         <td>${ d.creation_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") | n}</td>
         <td>${ d.last_modification_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") | n}</td>
         <td>${ h.link_to('X (delete)', url=h.url_for(controller='vote', action='delete', id=d.id)) }</td>

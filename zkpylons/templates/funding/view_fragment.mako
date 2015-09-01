@@ -48,7 +48,7 @@ ${ h.link_to('(email address only stalk)', url='http://google.com/search?q=%s' %
 <p>
 <blockquote>
 % if c.funding.diverse_groups:
-${ h.line_break(h.util.html_escape(c.funding.diverse_groups)) | n}
+${ c.funding.diverse_groups | h.line_break}
 % else:
 Not specified
 % endif
@@ -58,18 +58,18 @@ Not specified
 <h2>Supporting Information</h2>
 <p class="label">How do you contribute to the Open Source community?</p>
 <p><blockquote>
-${ h.line_break(h.util.html_escape(c.funding.how_contribute)) | n}
+${ c.funding.how_contribute | h.line_break}
 </blockquote></p>
 
 <p class="label">What are your financial circumstances?</p>
 <p><blockquote>
-${ h.line_break(h.util.html_escape(c.funding.financial_circumstances)) | n}
+${ c.funding.financial_circumstances | h.line_break}
 </blockquote></p>
 
 <p class="label">Any other supporting information?</p>
 <p><blockquote>
 % if c.funding.supporting_information:
-${ h.line_break(h.util.html_escape(c.funding.supporting_information)) | n}
+${ c.funding.supporting_information | h.line_break}
 % else:
 Not specified
 % endif
@@ -79,7 +79,7 @@ Not specified
 
 <p class="label">Why would you like to attend ${ c.config.get('event_name') }</p>
 <p><blockquote>
-${ h.line_break(h.util.html_escape(c.funding.why_attend)) | n}
+${ c.funding.why_attend | h.line_break}
 </blockquote></p>
 
 <p class="label">Have you attended ${ c.config.get('event_generic_name') } before?</p>

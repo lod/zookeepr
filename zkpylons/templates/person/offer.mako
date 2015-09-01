@@ -13,7 +13,7 @@ ${ h.form(h.url_for(), method='post') }
 %    for offer in c.offers:
   <tr>
     <td>${ offer.title }</td>
-    <td>${ h.line_break(h.util.html_escape(offer.abstract)) | n}</td>
+    <td>${ offer.abstract | h.line_break}</td>
   </tr>
 %    endfor
 </table>

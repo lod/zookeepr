@@ -27,7 +27,7 @@
         <td>${ h.link_to(volunteer.person.firstname + ' ' + volunteer.person.lastname, h.url_for(controller='person', action='view', id=volunteer.person.id)) }</td>
         <td>${ volunteer.person.email_address }</td>
         <td>${ volunteer.person.mobile or volunteer.person.phone | h }</td>
-        <td>${ h.line_break(volunteer.other) }</td>
+        <td>${ volunteer.other | h.line_break }</td>
 %       if volunteer.accepted is None:
         <td>Pending</td>
 %       elif volunteer.accepted == True:

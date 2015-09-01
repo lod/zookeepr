@@ -25,7 +25,7 @@ ${ c.proposal.type.name }
 <em>Abstract:</em>
 </p>
 <blockquote>
-<p>${ h.line_break(h.util.html_escape(c.proposal.abstract)) | n}</p>
+<p>${ c.proposal.abstract | h.line_break}</p>
 </blockquote>
 </div>
 
@@ -35,7 +35,7 @@ ${ c.proposal.type.name }
 <em>Extended (reviewer only) Abstract:</em>
 </p>
 <blockquote>
-<p>${ h.line_break(h.util.html_escape(c.proposal.technical_requirements)) | n}</p>
+<p>${ c.proposal.technical_requirements | h.line_break}</p>
 </blockquote>
 </div>
 % endif
@@ -100,7 +100,7 @@ ${ h.link_to('(email address only stalk)', url='http://google.com/search?q=%s' %
 </p>
 <blockquote><p>
 %   if person.bio:
-${ h.line_break(h.util.html_escape(person.bio)) |n}
+${ person.bio | h.line_break}
 %   else:
 [none provided]
 %   endif
@@ -113,7 +113,7 @@ ${ h.line_break(h.util.html_escape(person.bio)) |n}
 </p>
 <blockquote><p>
 %   if person.experience:
-${ h.line_break(h.util.html_escape(person.experience)) |n}
+${ person.experience | h.line_break}
 %   else:
 [none provided]
 %   endif

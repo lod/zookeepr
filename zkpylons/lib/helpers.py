@@ -176,12 +176,21 @@ def slideshow(set, small=None):
     except IndexError:
         return "no images found"
 
+def _safe_replace(text, sep, replacement):
+    """ markupsafe.Markup doesn't work with str.replace(), need to implement our own """
+    while (sep in text):
+        (front, rubbish, tail) = text.partition(sep)
+        text = front + replacement + tail
+    return text
+
 
 def line_break(text):
-    """ Turn line breaks into <br>'s """
-    # markupsafe prevents mako from escaping our additions
-    first = text.replace('\r\n', markupsafe.Markup('<br>'))
-    return first.replace('\n', markupsafe.Markup('<br>'))
+    """ Turn line breaks into <br>'s
+        Can be used as a regular function or as a mako filter ${ var | h.line_break }
+    """
+    # markupsafe prevents further mako filters from escaping our additions
+    text = _safe_replace(text, '\r\n', markupsafe.Markup('<br>'))
+    return _safe_replace(text, '\n', markupsafe.Markup('<br>'))
 
 def yesno(value):
     """ Display a read-only checkbox for the value provided """

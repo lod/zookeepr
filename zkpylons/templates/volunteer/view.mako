@@ -101,7 +101,7 @@ None
           <p class="entries">Other:</p>
         </td>
         <td>
-          <p class="entries"><blockquote>${ h.line_break(c.volunteer.other) }</blockquote></p>
+          <p class="entries"><blockquote>${ c.volunteer.other | h.line_break }</blockquote></p>
           <p class="note"><small>Please provide any other relevant information such as your areas of interest, arrival and departure dates (if you're not local), your availability during LCA2011, and any special requirements (dietary or otherwise).</small></p>
         </td>
       </tr>
@@ -111,7 +111,7 @@ None
           <p class="entries">Experience:</p>
         </td>
         <td>
-          <p class="entries"><blockquote>${ h.line_break(c.volunteer.experience) }</blockquote></p>
+          <p class="entries"><blockquote>${ c.volunteer.experience | h.line_break }</blockquote></p>
           <p class="note"><small>Please provide details of your involvement at previous LCAs. If you have selected either of the technical options above (i.e., A/V or networking), then please indicate your relevant experience and skills here.</small></p>
         </td>
       </tr>
