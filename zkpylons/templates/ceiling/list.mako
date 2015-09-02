@@ -37,7 +37,7 @@ ${ ceiling.available_from.strftime('%d/%m/%y') }\
 ${ ceiling.available_until.strftime('%d/%m/%y') }\
 %       endif
 </td>
-    <td>${ h.yesno(ceiling.available()) | n }</td>
+    <td>${ h.yesno(ceiling.available()) }</td>
     <td>${ ceiling.qty_invoiced(date=False) }</td>
     <td>${ ceiling.qty_invoiced() }</td>
     <td>${ ceiling.qty_sold() }</td>

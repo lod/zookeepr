@@ -4,10 +4,10 @@
 
     <table>
       <tr class="even">
-        <td><b>Enabled:</b></td><td>${ h.yesno(c.special_offer.enabled) |n }</td>
+        <td><b>Enabled:</b></td><td>${ h.yesno(c.special_offer.enabled) }</td>
       </tr>
       <tr class="odd">
-        <td><b>Name:</b></td><td>${ c.special_offer.name  }</td>
+        <td><b>Name:</b></td><td>${ c.special_offer.name }</td>
       </tr>
       <tr class="even">
         <td valign="top"><b>Description:</b></td><td>${ c.special_offer.description | n}</td>
@@ -21,7 +21,7 @@
     <p>People who took advantage of this offer:
     <ul>
 %  for rego in c.registrations:
-        <li>${ h.link_to(rego.person.firstname + ' ' + rego.person.lastname, url=h.url_for(controller='person', action='view', id=rego.person.id)) }: '${rego.member_number }' --
+        <li>${ h.link_to(rego.person.fullname, url=h.url_for(controller='person', action='view', id=rego.person.id)) }: '${rego.member_number }' --
 %    if rego.person.registration:
 ${ h.link_to('registered', url=h.url_for(controller='registration', action='view', id=rego.person.registration.id)) }
 %      if rego.person.paid():

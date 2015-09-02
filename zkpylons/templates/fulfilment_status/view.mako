@@ -4,15 +4,15 @@
 
     <p><b>Name:</b> ${ c.fulfilment_status.name }<br></p>
     <p>
-      <b>Void:</b> ${ h.yesno(c.fulfilment_status.void) |n }<br />
+      <b>Void:</b> ${ h.yesno(c.fulfilment_status.void) }<br />
       <sub>Does this status mark the Fulfilment void</sub>
     </p>
     <p>
-      <b>Completed:</b> ${ h.yesno(c.fulfilment_status.completed) |n }<br />
+      <b>Completed:</b> ${ h.yesno(c.fulfilment_status.completed) }<br />
       <sub>Does this status mark the Fulfilment completed</sub>
     </p>
     <p>
-      <b>Locked:</b> ${ h.yesno(c.fulfilment_status.locked) |n }<br />
+      <b>Locked:</b> ${ h.yesno(c.fulfilment_status.locked) }<br />
       <sub>Does this status mark the Fulfilment locked</sub>
     </p>
     <p><b>Fulfilment Types this status can be used with:</b></p>

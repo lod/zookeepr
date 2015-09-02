@@ -30,7 +30,7 @@
 % endif
       <br>
     </p>
-    <p><b>Currently Available:</b> ${ h.yesno(c.ceiling.available()) | n } <br></p>
+    <p><b>Currently Available:</b> ${ h.yesno(c.ceiling.available()) } <br></p>
 
     <a name="products"></a>
     <h3>Products in this Ceiling</h3>
@@ -66,7 +66,7 @@
       <tr>
         <td>${ h.link_to(product.description, url=h.url_for(controller='product', action='view', id=product.id)) }</td>
         <td>${ product.category.name }</td>
-        <td>${ h.yesno(product.active) | n }</td>
+        <td>${ h.yesno(product.active) }</td>
         <td>${ h.integer_to_currency(product.cost) }</td>
         <td>${ product.qty_invoiced(date=False) }</td>
         <td>${ product.qty_invoiced() }</td>

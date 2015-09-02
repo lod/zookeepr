@@ -214,7 +214,7 @@ if "not_australian" in c.registration_request and c.registration_request['not_au
         </td>
         <td>
 %   if not registration.over18:
-        <b>Under 18</b> ${ h.yesno(not registration.over18) | n }<br><br>
+        <b>Under 18</b> ${ h.yesno(not registration.over18) }<br><br>
 %   endif
 % if registration.notes:
             ${ '<br><br>'.join(["<b>Note by <i>" + n.by.firstname + " " + n.by.lastname + "</i> at <i>" + n.last_modification_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") + "</i>:</b><br>" + h.line_break(n.note) for n in registration.notes]) + '<br><br>' | n}

@@ -80,8 +80,8 @@
       <tr class="${ h.cycle('odd', 'even') }">
         <td>${ h.link_to(product.description, url=h.url_for(controller='product', action='view', id=product.id)) }</td>
         <td>${ product.display_order }</td>
-        <td>${ h.yesno(product.active) |n }</td>
-        <td>${ h.yesno(product.available()) |n }</td>
+        <td>${ h.yesno(product.active) }</td>
+        <td>${ h.yesno(product.available()) }</td>
         <td>${ h.integer_to_currency(product.cost) | h }</td>
         <td>${ product.qty_invoiced(date = False) }</td>
         <td>${ product.qty_invoiced() }</td>

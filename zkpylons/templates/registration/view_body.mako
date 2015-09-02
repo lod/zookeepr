@@ -42,7 +42,7 @@
 %               if category.display == 'qty':
         <p>${ rproduct.qty } x ${ product.description } - ${ h.integer_to_currency(product.cost) }</p>
 %               elif category.display == 'checkbox':
-          ${ h.yesno(rproduct.qty) + ' ' + product.description |n}
+          ${ h.yesno(rproduct.qty) } ${ product.description }
 %                   if product.cost != 0:
           - ${ h.integer_to_currency(product.cost) }
 %                   endif
@@ -71,7 +71,7 @@
 
         <h2>Further Information</h2>
 
-        <p>${ h.yesno(c.registration.over18) |n } Over 18 year old</p>
+        <p>${ h.yesno(c.registration.over18) } Over 18 year old</p>
 
 %if c.registration.voucher_code:
         <p class="label"><b>Voucher Code:</b> ${ c.registration.voucher_code }</p>
@@ -87,7 +87,7 @@
           <p class="entries">
 % for (year, desc) in c.config.get('past_confs', category='rego'):
             <br>
-            ${ h.yesno(year in (c.registration.prevlca or [])) |n }
+            ${ h.yesno(year in (c.registration.prevlca or [])) }
             ${ desc }
 % endfor
           </p>
@@ -116,8 +116,8 @@
 % endif
           <h2>Subscriptions</h2>
 
-          <p>${ h.yesno('linuxaustralia' in (c.registration.signup or [])) |n } I want to sign up for (free) Linux Australia membership!</p>
+          <p>${ h.yesno('linuxaustralia' in (c.registration.signup or [])) } I want to sign up for (free) Linux Australia membership!</p>
 
-          <p>${ h.yesno('announce' in (c.registration.signup or [])) |n } I want to sign up to the low traffic conference announcement mailing list!</p>
+          <p>${ h.yesno('announce' in (c.registration.signup or [])) } I want to sign up to the low traffic conference announcement mailing list!</p>
 
-          <p>${ h.yesno('chat' in (c.registration.signup or [])) |n } I want to sign up to the conference attendees mailing list!</p>
+          <p>${ h.yesno('chat' in (c.registration.signup or [])) } I want to sign up to the conference attendees mailing list!</p>

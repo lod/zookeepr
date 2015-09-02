@@ -35,4 +35,10 @@ class TestHelpers(unittest.TestCase):
         expected = 'A <a href="http://%22messy.url.com/?">&lt;left&gt;right!?bob]with</a> a lot &lt;br&gt; &lt;a href=&#34;&#34;&gt;of <a href="ftp://sandy/">random</a> urls <a href="https://google"> scattered<br><a>through</a>'
         assert markupsafe.escape(h.url_to_link(sample)) == expected
 
+    def test_yesno(self):
+        """ Displays a unicode checkbox, either ticked or not based on parameter """
+        assert h.yesno(True) == "&#9745;"
+        assert h.yesno(False) == "&#9744;"
+        assert markupsafe.escape(h.yesno(True)) == "&#9745;"
+        assert markupsafe.escape(h.yesno(False)) == "&#9744;"
 

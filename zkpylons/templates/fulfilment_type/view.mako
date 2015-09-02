@@ -15,8 +15,8 @@
       <tr>
         <td>${ h.link_to(status.id, h.url_for(controller='fulfilment_status', action='view', id=status.id))}</td>
         <td style="text-align: center;">${ status.name }</td>
-        <td style="text-align: center;">${ h.yesno(status.void) |n }</td>
-        <td style="text-align: center;">${ h.yesno(status.completed) |n }</td>
+        <td style="text-align: center;">${ h.yesno(status.void) }</td>
+        <td style="text-align: center;">${ h.yesno(status.completed) }</td>
       </tr>
 % endfor
     </table>

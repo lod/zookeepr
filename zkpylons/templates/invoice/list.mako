@@ -36,7 +36,7 @@
             <span style="font-size: smaller;">(${ h.link_to('Unvoid', h.url_for(action="unvoid", id=i.id)) })</span>
 %   endif
         </td>
-        <td>${ h.yesno(i.manual) |n }</td>
+        <td>${ h.yesno(i.manual) }</td>
         <td>
 %   if len(i.good_payments) > 0:
 %       for p in i.good_payments:

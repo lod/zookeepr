@@ -25,7 +25,7 @@
     <td>${ category.display }</td>
     <td>${ category.display_mode or ""}</td>
     <td>${ category.display_order }</td>
-    <td>${ h.yesno(category.invoice_free_products) |n}</td>
+    <td>${ h.yesno(category.invoice_free_products) }</td>
     <td>${ category.min_qty }</td>
     <td>${ category.max_qty }</td>
 %       if c.can_edit:

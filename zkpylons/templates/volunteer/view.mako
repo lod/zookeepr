@@ -84,7 +84,7 @@ None
 %   for area in category['questions']:
 <%    code = area['name'].replace(' ', '_').replace('.', '_') %>
         <tr class="${ h.cycle('even', 'odd') }">
-          <td valign="middle" align="center">${ h.yesno(code in c.volunteer.areas) |n }</td>
+          <td valign="middle" align="center">${ h.yesno(code in c.volunteer.areas) }</td>
           <td>${ area['name'] }
 %     if area.has_key('description'):
             <br><small>${ area['description'] }</small>

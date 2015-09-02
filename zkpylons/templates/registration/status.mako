@@ -162,15 +162,15 @@
 
     <h3>Summary of steps</h3>
 % if c.person:
-    <p>${ h.yesno(c.registration != None) |n} Fill in registration form
-    <br>${ h.yesno(c.person.valid_invoice()) |n} Generate invoice
-    <br>${ h.yesno(c.person.paid()) |n} Pay
-    <br>${ h.yesno(False) |n} Attend conference</p>
+    <p> ${ h.yesno(c.registration != None)   } Fill in registration form
+    <br>${ h.yesno(c.person.valid_invoice()) } Generate invoice
+    <br>${ h.yesno(c.person.paid())          } Pay
+    <br>${ h.yesno(False)                    } Attend conference</p>
 % else:
-    <p>${ h.yesno(False) |n} Fill in registration form
-    <br>${ h.yesno(False) |n} Generate invoice
-    <br>${ h.yesno(False) |n} Pay
-    <br>${ h.yesno(False) |n} Attend conference</p>
+    <p> ${ h.yesno(False) } Fill in registration form
+    <br>${ h.yesno(False) } Generate invoice
+    <br>${ h.yesno(False) } Pay
+    <br>${ h.yesno(False) } Attend conference</p>
 % endif
 % endif
 

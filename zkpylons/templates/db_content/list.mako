@@ -30,7 +30,7 @@
         <td>N/A</td>
 %   endif
         <td>${ d.creation_timestamp.strftime("%Y-%m-%d %H:%M") }</td>
-        <td>${ h.yesno(d.publish_timestamp <= h.datetime.now()) |n } ${ d.publish_timestamp.strftime("%Y-%m-%d %H:%M") }</td>
+        <td>${ h.yesno(d.publish_timestamp <= h.datetime.now()) } ${ d.publish_timestamp.strftime("%Y-%m-%d %H:%M") }</td>
         <td>${ d.last_modification_timestamp.strftime("%Y-%m-%d %H:%M") }</td>
         <td>${ h.link_to('X (delete)', url=h.url_for(controller='db_content', action='delete', id=d.id)) }</td>
     </tr>

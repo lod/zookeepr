@@ -26,10 +26,10 @@
     <td>${ fulfilment.type.name }</td>
     <td>${ fulfilment.status.name }</td>
     <td>${ fulfilment.code }</td>
-    <td>${ h.yesno(fulfilment.is_completed) |n }</td>
-    <td>${ h.yesno(fulfilment.is_void) |n }</td>
-    <td>${ h.yesno(fulfilment.is_locked) |n }</td>
-    <td>${ h.yesno(fulfilment.can_edit) |n }</td>
+    <td>${ h.yesno(fulfilment.is_completed) }</td>
+    <td>${ h.yesno(fulfilment.is_void)      }</td>
+    <td>${ h.yesno(fulfilment.is_locked)    }</td>
+    <td>${ h.yesno(fulfilment.can_edit)     }</td>
 %     if fulfilment.type.name == 'Badge':
     <td>${ h.link_to('badge', url=h.url_for(action='badge_pdf', id=fulfilment.id)) }</td>
     <td>${ h.link_to('print', url=h.url_for(action='badge_print', id=fulfilment.id)) }</td>

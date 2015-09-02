@@ -22,8 +22,8 @@
 %     else:
     <td>${ event.computed_title() }</td>
 %     endif
-    <td>${ h.yesno(event.publish) |n }</td>
-    <td>${ h.yesno(event.exclusive) |n }</td>
+    <td>${ h.yesno(event.publish) }</td>
+    <td>${ h.yesno(event.exclusive) }</td>
 %       if c.can_edit:
 %           for action in ['edit', 'delete']:
   <td>${ h.link_to(action, url=h.url_for(action=action, id=event.id)) }</td>

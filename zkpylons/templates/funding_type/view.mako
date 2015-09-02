@@ -4,16 +4,16 @@
 
 <p>
    <b>Name:</b>
-    ${ c.funding_type.name | h }
+    ${ c.funding_type.name }
 </p>
 
 <p>
-  <b>Active:</b> ${ h.yesno(c.funding_type.active) | n }
+  <b>Active:</b> ${ h.yesno(c.funding_type.active) }
 </p>
 
 <p>
    <b>Notify Email:</b>
-    ${ c.funding_type.notify_email | h }
+    ${ c.funding_type.notify_email }
 </p>
 
 ${ h.link_to('Edit', url=h.url_for(action='edit',id=c.funding_type.id)) } |

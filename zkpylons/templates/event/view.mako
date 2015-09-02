@@ -8,8 +8,8 @@
 %endif
     <p><b>Title:</b> ${ c.event.title }<br></p>
     <p><b>URL:</b> ${ c.event.url }<br></p>
-    <p><b>Publish:</b> ${ h.yesno(c.event.publish) | n }<br></p>
-    <p><b>Exclusive:</b> ${ h.yesno(c.event.exclusive) | n }<br></p>
+    <p><b>Publish:</b> ${ h.yesno(c.event.publish) }<br></p>
+    <p><b>Exclusive:</b> ${ h.yesno(c.event.exclusive) }<br></p>
 
     <h3>This events schedule</h3>
     <table>

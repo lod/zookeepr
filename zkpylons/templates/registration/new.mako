@@ -49,7 +49,7 @@ ${ c.special_offer.description | n }
 %if not c.signed_in_person.i_agree:
         <p>${ h.checkbox('person.i_agree') } <label for="personi_agree">I agree to the</label> <a href="/cor/terms_and_conditions" target="_blank">terms and conditions</a></p>
 %else:
-        <p>${ h.yesno(True) |n } I agree to the <a href="/cor/terms_and_conditions" target="_blank">terms and conditions</a></p>
+        <p>${ h.yesno(True) } I agree to the <a href="/cor/terms_and_conditions" target="_blank">terms and conditions</a></p>
         ${ h.hidden('person.i_agree', True) }
 %endif
         <p class="submit">${ h.submit("submit", "Register me!") }</p>

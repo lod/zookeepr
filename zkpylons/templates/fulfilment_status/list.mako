@@ -17,9 +17,9 @@
   <tr class="${ h.cycle('even', 'odd')}">
     <td>${ h.link_to(fulfilment_status.id, url=h.url_for(action='view', id=fulfilment_status.id)) }</td>
     <td>${ fulfilment_status.name }</td>
-    <td>${ h.yesno(fulfilment_status.void) |n }</td>
-    <td>${ h.yesno(fulfilment_status.completed) |n }</td>
-    <td>${ h.yesno(fulfilment_status.locked) |n }</td>
+    <td>${ h.yesno(fulfilment_status.void)      }</td>
+    <td>${ h.yesno(fulfilment_status.completed) }</td>
+    <td>${ h.yesno(fulfilment_status.locked)    }</td>
 %       if c.can_edit:
 %           for action in ['edit', 'delete']:
   <td>${ h.link_to(action, url=h.url_for(action=action, id=fulfilment_status.id)) }</td>
