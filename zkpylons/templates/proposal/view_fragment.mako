@@ -184,16 +184,61 @@
 </div>
 
 % if c.cfp_hide_assistance_info == 'no':
-  % if c.proposal.accommodation_assistance:
-    <p>
-      <em>Accommodation assistance:</em> ${ c.proposal.accommodation_assistance.name }
-    </p>
-  % endif
-  % if c.proposal.travel_assistance:
-    <p>
-      <em>Travel assistance:</em> ${ c.proposal.travel_assistance.name }
-    </p>
-  % endif
+  <div id="assistance">
+    % if c.proposal.accommodation_assistance:
+      <p>
+        <em>Accommodation assistance:</em> ${ c.proposal.accommodation_assistance.name }
+      </p>
+    % endif
+    % if c.proposal.travel_assistance:
+      <p>
+        <em>Travel assistance:</em> ${ c.proposal.travel_assistance.name }
+      </p>
+    % endif
+    <p><a id="hide_assistance">Hide assistance</a></p>
+  </div>
+  <div id="assistance_hidden" style="display: none">
+    <p>Assistance is hidden - <a id="show_assistance">show</a></p>
+  </div>
+  <style type="text/css">
+    /* Anchor without href uses text cursor by default */
+    a#hide_assistance, a#show_assistance { cursor:pointer; }
+  </style>
+  <script>
+    /* The assistance preferences have been shown to impact the reviewer scores.
+     * So for the first pass of reviews we want to hide the assistance preferences.
+     * Later the assistance can be shown for the final decisions.
+     *
+     * c.cfp_hide_assistance_info specifies that assistance shouldn't be an option
+     * offered to people, in that instance we just hide the whole lot.
+     *
+     * We use cookies so that the preference is persistent, particularly across pages.
+     *
+     * Note: The positioning of the script tag is a bit of a hack, we can
+     * assume that the dom we care about is loaded without waiting for the
+     * rest of the page. This help minimise the flash before we override the
+     * display state.
+     */
+    function show_assistance() {
+      document.cookie = "assistance=show"
+      jQuery("#assistance").show();
+      jQuery("#assistance_hidden").hide();
+    }
+    function hide_assistance() {
+      document.cookie = "assistance=hide"
+      jQuery("#assistance").hide();
+      jQuery("#assistance_hidden").show();
+    }
+    jQuery("#hide_assistance").click(hide_assistance);
+    jQuery("#show_assistance").click(show_assistance);
+    // Set state to match cookie value, hide by default
+    // Doing it this way shows assistance as no-js fallback
+    if (/(?:^|;\s*)assistance=show\s*(?:;|$)/.test(document.cookie)) {
+      show_assistance();
+    } else {
+      hide_assistance();
+    }
+  </script>
 % endif
 
 <div class="consents">
