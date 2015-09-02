@@ -258,31 +258,34 @@ class TestProposal(object):
         do_login(app, joe_public)
         app.get(url_for(controller='proposal', action='view', id=prop.id), status=403)
 
-        # Submitter, can view, edit, not review
+        # Submitter, can view, edit, not review, not stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, submitter)
         resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" not in unicode(resp.body, 'utf-8')
 
-        # Late submitter, can view, edit, not review
+        # Late submitter, can view, edit, not review, not stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, late_submitter)
         resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" not in unicode(resp.body, 'utf-8')
 
-        # Organiser, can view, edit, not review
+        # Organiser, can view, edit, not review, stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, organiser)
         resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
-        # Reviewer, can view, not edit, review
+        # Reviewer, can view, not edit, review, stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, reviewer)
         assert isSignedIn(app)
@@ -290,8 +293,9 @@ class TestProposal(object):
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" not in unicode(resp.body, 'utf-8')
         assert "Proposal Review" in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
-        # Super reviewer, can view, edit, review
+        # Super reviewer, can view, edit, review, stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, super_reviewer)
         assert isSignedIn(app)
@@ -299,6 +303,7 @@ class TestProposal(object):
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
         Config.find_by_pk(('general','proposal_editing')).value = 'closed'
         db_session.commit()
@@ -313,15 +318,16 @@ class TestProposal(object):
         do_login(app, joe_public)
         app.get(url_for(controller='proposal', action='view', id=prop.id), status=403)
 
-        # Submitter, can view, not edit, not review
+        # Submitter, can view, not edit, not review, not stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, submitter)
         resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" not in unicode(resp.body, 'utf-8')
         assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" not in unicode(resp.body, 'utf-8')
 
-        # Late submitter, can view, edit, not review
+        # Late submitter, can view, edit, not review, not stalk
         app.get(url_for(controller='person', action='signout', id=None))
         assert not isSignedIn(app)
         do_login(app, late_submitter)
@@ -329,16 +335,18 @@ class TestProposal(object):
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" not in unicode(resp.body, 'utf-8')
 
-        # Organiser, can view, edit, not review
+        # Organiser, can view, edit, not review, stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, organiser)
         resp = app.get(url_for(controller='proposal', action='view', id=prop.id))
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" not in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
-        # Reviewer, can view, not edit, review
+        # Reviewer, can view, not edit, review, stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, reviewer)
         assert isSignedIn(app)
@@ -346,8 +354,9 @@ class TestProposal(object):
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" not in unicode(resp.body, 'utf-8')
         assert "Proposal Review" in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
-        # Super reviewer, can view, edit, review
+        # Super reviewer, can view, edit, review, stalk
         app.get(url_for(controller='person', action='signout', id=None))
         do_login(app, super_reviewer)
         assert isSignedIn(app)
@@ -355,6 +364,7 @@ class TestProposal(object):
         assert "Proposal for" in unicode(resp.body, 'utf-8')
         assert "Edit Proposal" in unicode(resp.body, 'utf-8')
         assert "Proposal Review" in unicode(resp.body, 'utf-8')
+        assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
 
 
