@@ -185,7 +185,8 @@ class ProposalController(BaseController):
         # Reviewers see review page by default
         c.streams = Stream.select_values()
         c.signed_in_person = h.signed_in_person()
-        c.next_review_id = Proposal.find_next_proposal(c.proposal.id, c.proposal.type.id, c.signed_in_person.id)
+        next_review = Proposal.find_next_proposal(c.proposal, c.signed_in_person)
+        c.next_review_id = next_review.id if next_review else None
 
         c.review = Review.find_by_proposal_reviewer(id, c.signed_in_person.id, abort_404=False)
         if c.review:
@@ -209,7 +210,8 @@ class ProposalController(BaseController):
         """
         c.proposal = Proposal.find_by_id(id)
         c.signed_in_person = h.signed_in_person()
-        c.next_review_id = Proposal.find_next_proposal(c.proposal.id, c.proposal.type.id, c.signed_in_person.id)
+        next_review = Proposal.find_next_proposal(c.proposal, c.signed_in_person)
+        c.next_review_id = next_review.id if next_review else None
 
         c.review = Review.find_by_proposal_reviewer(id, c.signed_in_person.id, abort_404=False)
         if c.review:
