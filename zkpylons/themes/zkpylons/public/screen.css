@@ -439,3 +439,15 @@ tr.clickable:hover {
 table.zebra tr:nth-child(even) { background: #DDD }
 table.zebra tr:nth-child(odd)  { background: #FFF }
 table.zebra { border-collapse: collapse }
+
+/* Proposal review scores are an odd table */
+table.review_scores {
+	border-collapse: collapse;
+}
+table.review_scores tbody {
+	border-top: 1px solid black;
+	border-bottom: 1px solid black;
+}
+table.review_scores th, table.review_scores td {
+	vertical-align: top;
+}

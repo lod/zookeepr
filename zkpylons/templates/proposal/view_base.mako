@@ -44,51 +44,60 @@
 % endif
 
 % if h.auth.authorized(h.auth.Or(h.auth.has_organiser_role, h.auth.has_reviewer_role, h.auth.has_proposals_chair_role)):
-  <table>
-    <tr>
-      <th># - Reviewer</th>
-      <th>Score</th>
-      %if len(c.streams) > 1:
-        <th>Rec. Stream</th>
-      %endif
-      <th>Comment</th>
-      <th>Private Comment</th>
-    </tr>
+  <br><br>
+  <table class="review_scores">
     % for r in c.proposal.reviews:
-      <tr class="${ h.cycle('even', 'odd') }, review_score">
-        <td style="vertical-align: top;">
-          ${ h.link_to("%s - %s %s" % (r.id, r.reviewer.firstname, r.reviewer.lastname), url=h.url_for(controller='review', id=r.id, action='view')) }
-        </td>
-        <td style="vertical-align: top;">
-          ${ r.score }
-        </td>
-        % if len(c.streams) > 1:
-          <td style="vertical-align: top;">
-            % if r.stream is not None:
-              ${ r.stream.name }
+      <tbody>
+        <tr>
+          <th>Reviewer</th>
+          <td>
+            ${ h.link_to(r.reviewer.fullname, url=h.url_for(controller='review', id=r.id, action='view')) }
+          </td>
+          <th>Score</th>
+          <td>
+            % if r.score:
+              ${ r.score }
             % else:
-              (none)
+              &mdash;
             % endif
           </td>
-        % endif
-        <td style="vertical-align: top;">
-          ${ r.comment | h.line_break}
-        </td>
-        <td style="vertical-align: top;">
-          ${ r.private_comment | h.line_break}
+          % if len(c.streams) > 1:
+            <th>Rec. Stream</th>
+            <td>
+              % if r.stream is not None:
+                ${ r.stream.name }
+              % else:
+                (none)
+              % endif
+            </td>
+          % endif
+        </tr>
+        <tr>
+          <th>Comment</th>
+          <td colspan="${ 3 + 2*(len(c.streams) > 1) }">
+            ${ r.comment | h.line_break}
+          </td>
+        </tr>
+        <tr>
+          <th>Private Comment</th>
+          <td colspan="${ 3 + 2*(len(c.streams) > 1) }">
+            ${ r.private_comment | h.line_break}
+          </td>
+        </tr>
+      </tbody>
+    % endfor
+    <tfoot>
+      <tr>
+        <td colspan="${ 4 + 2*(len(c.streams) > 1) }" style="text-align: center">
+          <a id="hide_reviews">Hide other reviews</a>
         </td>
       </tr>
-    % endfor
-    <tr class="review_score">
-      <td colspan="${ 4 + (len(c.streams) > 1) }" style="text-align: center">
-        <a id="hide_reviews">Hide other reviews</a>
-      </td>
-    </tr>
-    <tr id="reviews_hidden" style="display: none">
-      <td colspan="${ 4 + (len(c.streams) > 1) }" style="text-align: center">
-        Reviews are hidden - <a id="show_reviews">show</a>
-      </td>
-    </tr>
+      <tr id="reviews_hidden" style="display: none">
+        <td colspan="${ 4 + 2*(len(c.streams) > 1) }">
+          Reviews are hidden - <a id="show_reviews">show</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
   <style type="text/css">
     /* Anchor without href uses text cursor by default */
@@ -112,13 +121,15 @@
      */
     function show_reviews() {
       document.cookie = "review_scores=show"
-      jQuery("tr.review_score").show();
-      jQuery("tr#reviews_hidden").hide();
+      jQuery("table.review_scores tbody").show();
+      jQuery("#hide_reviews").parents("tr").show();
+      jQuery("#show_reviews").parents("tr").hide();
     }
     function hide_reviews() {
       document.cookie = "review_scores=hide"
-      jQuery("tr.review_score").hide();
-      jQuery("tr#reviews_hidden").show();
+      jQuery("table.review_scores tbody").hide();
+      jQuery("#hide_reviews").parents("tr").hide();
+      jQuery("#show_reviews").parents("tr").show();
     }
     jQuery("#show_reviews").click(show_reviews);
     jQuery("#hide_reviews").click(hide_reviews);
