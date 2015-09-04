@@ -215,7 +215,6 @@ class TestProposal(object):
             bad.append(prop.id)
 
         frequency = {x:0 for x in good}
-        db_session.commit()
 
         for i in range(1000):
             current = Proposal.find_by_id(random.choice(good))
@@ -231,3 +230,85 @@ class TestProposal(object):
         variance = (sum_squares/len(frequency))**0.5
         assert variance < 20 # Should be around 8-10
 
+    def test_duplicate_titles(self, db_session):
+        db_session.execute("CREATE EXTENSION fuzzystrmatch;")
+        db_session.execute("CREATE EXTENSION pg_trgm;")
+        withdrawn = ProposalStatusFactory(name="Withdrawn")
+
+        base       = ProposalFactory(title="An identical title discussing some detail")
+        duplicate  = ProposalFactory(title="An identical title discussing some detail")
+        similar    = ProposalFactory(title="An identical title discussing some details")
+        dissimilar = ProposalFactory(title="A dissimilar title conversing on a beach")
+        pulled     = ProposalFactory(title="An identical title discussing some detail", status=withdrawn)
+
+        dups = base.find_duplicates()
+        assert len(dups) == 2
+        assert duplicate in dups
+        assert similar in dups
+
+        dups = duplicate.find_duplicates()
+        assert len(dups) == 2
+        assert base in dups
+        assert similar in dups
+
+        dups = similar.find_duplicates()
+        assert len(dups) == 2
+        assert base in dups
+        assert duplicate in dups
+
+        dups = dissimilar.find_duplicates()
+        assert len(dups) == 0
+        assert dups == []
+
+    def test_duplicate_abstracts(self, db_session):
+        db_session.execute("CREATE EXTENSION fuzzystrmatch;")
+        db_session.execute("CREATE EXTENSION pg_trgm;")
+        withdrawn = ProposalStatusFactory(name="Withdrawn")
+
+        base_abstract = """
+            Lorem ipsum dolor sit amet, est meis mentitum ea. Amet appareat nec ne. Ad habeo oblique accumsan usu, summo nobis contentiones ea vix. Duo id iisque discere, nullam principes sit eu. At qui saepe principes voluptatibus.
+
+Eos invidunt interesset at, delectus molestiae suscipiantur eu sea. Lorem offendit ne duo. Nec ut tota tritani temporibus, atqui scripta ad pro. Posse copiosae pri at.
+
+Has ut vidit partiendo posidonium, te liber aperiam nominati sed. An duo magna novum. Usu saepe atomorum in. Possit incorrupte ius in. Inani nullam et vix, in quem suas vivendum per. Est ea unum option eloquentiam.
+            """
+        similar_abstract = base_abstract.replace("incorrupte", "corrupte")
+        similar_abstract = similar_abstract.replace("temporibus", "buspermanentio")
+
+        dissimilar_abstract = """
+            Dang ipsizzle dolizzle sit amizzle, ass adipiscing i'm in the shizzle. Nullizzle gangsta velizzle, crazy volutpat, suscipizzle quis, shut the shizzle up vizzle, sizzle. Fizzle eget go to hizzle. Get down get down erizzle. Fizzle dope ghetto shiznit turpis tempus mah nizzle. Fo shizzle my nizzle crazy nibh et turpizzle. Dizzle in crazy. Shizzlin dizzle black rhoncizzle daahng dawg. In hac habitasse platea dictumst. Things dapibizzle. Curabitur gangsta crazy, i'm in the shizzle eu, mattizzle sizzle, eleifend bizzle, nunc. Dawg suscipizzle. Integizzle sempizzle velizzle sizzle boofron.
+            """
+
+        base       = ProposalFactory(abstract = base_abstract)
+        duplicate  = ProposalFactory(abstract = base_abstract)
+        similar    = ProposalFactory(abstract = similar_abstract)
+        dissimilar = ProposalFactory(abstract = dissimilar_abstract)
+        pulled     = ProposalFactory(abstract = base_abstract, status=withdrawn)
+
+        empty1     = ProposalFactory(abstract = "")
+        empty2     = ProposalFactory(abstract = "")
+        db_session.commit()
+
+        dups = base.find_duplicates()
+        assert len(dups) == 2
+        assert duplicate in dups
+        assert similar in dups
+        assert type(dups[0]) is Proposal
+
+        dups = duplicate.find_duplicates()
+        assert len(dups) == 2
+        assert base in dups
+        assert similar in dups
+
+        dups = similar.find_duplicates()
+        assert len(dups) == 2
+        assert base in dups
+        assert duplicate in dups
+
+        dups = dissimilar.find_duplicates()
+        assert len(dups) == 0
+        assert dups == []
+
+        dups = empty1.find_duplicates()
+        assert len(dups) == 0
+        assert dups == []

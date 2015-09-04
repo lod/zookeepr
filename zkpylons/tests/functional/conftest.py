@@ -100,8 +100,11 @@ def db_session():
     engine = create_engine(ini.get("app:main", "sqlalchemy.url"))
 
     # Drop all data to establish known state, mostly to prevent primary-key conflicts
-    engine.execute("drop schema if exists public cascade")
-    engine.execute("create schema public")
+    engine.execute("DROP SCHEMA IF EXISTS public CASCADE")
+    engine.execute("CREATE SCHEMA public")
+    engine.execute("CREATE EXTENSION fuzzystrmatch;")
+    engine.execute("CREATE EXTENSION pg_trgm;")
+
 
     zkmeta.Base.metadata.create_all(engine)
 

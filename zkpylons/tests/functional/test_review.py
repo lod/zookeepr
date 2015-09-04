@@ -10,21 +10,38 @@ from .utils import do_login
 
 class TableParser(HTMLParser):
     def __init__(self, *args, **kwargs):
-        HTMLParser.__init__(self, *args, **kwargs) # Old style class
+        HTMLParser.__init__(self) # Old style class
+        self.sel_id = kwargs.get("id")
+        self.sel_class = kwargs.get("class")
         self.tables = []
+        self.in_table = False # Mostly to differentiate selected from ignored tables
         self.in_cell = False
     def handle_starttag(self, tag, attrs):
+        dattrs = dict(attrs)
         if tag == "table":
+            if self.sel_id and dattrs.get("id") != self.sel_id:
+                return # Fail selector - bail
+            if self.sel_class and dattrs.get("class") != self.sel_class: # TODO: Support multiple classes
+                return # Fail selector - bail
             self.tables.append([])
+            self.in_table = True
+        if not self.in_table:
+            return
         if tag == "tr":
             self.tables[-1].append([])
         if tag == "td" or tag == "th":
             self.in_cell = True
             self.tables[-1][-1].append("")
     def handle_endtag(self, tag):
+        if not self.in_table:
+            return
         if tag == "td" or tag == "th":
             self.in_cell = False
+        if tag == "table":
+            self.in_table = False
     def handle_data(self, data):
+        if not self.in_table:
+            return
         if self.in_cell:
             self.tables[-1][-1][-1] += data
 
@@ -93,8 +110,8 @@ class TestReviewController(object):
     def test_reviews_not_isolated(self, app, db_session):
         """Test that a reviewer can see other reviews"""
 
-        p1 = PersonFactory(roles=[RoleFactory(name='reviewer')], firstname="Scrouge")
-        p2 = PersonFactory(firstname="Daffy")
+        p1 = PersonFactory(roles=[RoleFactory(name='reviewer')], firstname="Scrouge", lastname="McHouse")
+        p2 = PersonFactory(firstname="Daffy", lastname="Laffy")
         p3 = PersonFactory()
         prop = ProposalFactory(people=[p3])
         stream = StreamFactory()
@@ -105,6 +122,7 @@ class TestReviewController(object):
 
         do_login(app, p1)
         resp = app.get('/proposal/%d' % prop.id)
+        print resp
 
         # Page has list of reviews already set on proposal
         assert p1.firstname in unicode(resp.body, 'utf-8')
@@ -280,12 +298,8 @@ class TestReviewController(object):
         assert table[5][2] == "0"
 
         # Average score isn't visible
-        assert len(table[0]) == 3
-        assert len(table[1]) == 3
-        assert len(table[2]) == 3
-        assert len(table[3]) == 3
-        assert len(table[4]) == 3
-        assert len(table[5]) == 3
+        for i in range(6):
+            assert len(table[i]) == 3
 
 
         # Chair can see average scores
@@ -297,12 +311,8 @@ class TestReviewController(object):
 
         # Table should be the same except for the extra column
         assert len(chair_table) == 6 # Five reviewers + heading
-        assert chair_table[0][0:3] == table[0][0:3]
-        assert chair_table[1][0:3] == table[1][0:3]
-        assert chair_table[2][0:3] == table[2][0:3]
-        assert chair_table[3][0:3] == table[3][0:3]
-        assert chair_table[4][0:3] == table[4][0:3]
-        assert chair_table[5][0:3] == table[5][0:3]
+        for i in range(6):
+            assert chair_table[i][0:3] == table[i][0:3]
 
         # Average score
         assert chair_table[1][3] == "3.00"
@@ -317,3 +327,60 @@ class TestReviewController(object):
         parser = TableParser()
         parser.feed(resp.body)
         assert parser.tables[0] == chair_table
+
+    def test_duplicate_proposal(self, app, db_session):
+        """ Reviewers should be alerted to potential duplicate submissions. """
+
+        ProposalStatusFactory(name='Withdrawn') # Required by code
+
+        p1 = CompletePersonFactory()
+        p2 = CompletePersonFactory()
+        p3 = CompletePersonFactory()
+
+        base_title = "An identical title discussing some detail"
+        similar_title = "An identical title discussing some details"
+        dissimilar_title = "A dissimilar title conversing on a beach"
+
+        base_abstract = """
+            Bacon ipsum dolor amet kielbasa chicken beef spare ribs, landjaeger jerky chuck boudin ground round shankle venison ribeye sirloin cow tenderloin. T-bone drumstick tongue fatback rump alcatra. Ribeye filet mignon pork chuck brisket corned beef t-bone. Kielbasa bresaola swine porchetta alcatra ground round brisket capicola cupim. Porchetta spare ribs drumstick, pork belly andouille jowl alcatra rump pancetta. Boudin swine meatloaf turducken frankfurter pastrami cow filet mignon bacon andouille landjaeger kevin. Rump pancetta drumstick kielbasa, boudin frankfurter flank bresaola prosciutto tongue filet mignon.
+
+            Filet mignon boudin pork salami ribeye drumstick. Capicola jerky bacon, beef pastrami short ribs porchetta. Bresaola bacon t-bone pork chop meatloaf cow. Ground round shankle tongue, salami shoulder tail jowl tenderloin sausage venison. Brisket shoulder beef porchetta kielbasa. Ground round short ribs swine tail meatloaf landjaeger rump pig cow kielbasa. Shank landjaeger pork meatball kielbasa.
+            """
+        dissimilar_abstract = """
+            Turnip greens yarrow ricebean rutabaga endive cauliflower sea lettuce kohlrabi amaranth water spinach avocado daikon napa cabbage asparagus winter purslane kale. Celery potato scallion desert raisin horseradish spinach carrot soko. Lotus root water spinach fennel kombu maize bamboo shoot green bean swiss chard seakale pumpkin onion chickpea gram corn pea. Brussels sprout coriander water chestnut gourd swiss chard wakame kohlrabi beetroot carrot watercress. Corn amaranth salsify bunya nuts nori azuki bean chickweed potato bell pepper artichoke. 
+            """
+        similar_abstract = base_abstract.replace("drumstick", "child meat")
+        similar_abstract = similar_abstract.replace("pork", "holy")
+
+        base                = ProposalFactory(people=[p1], title=base_title, abstract=base_abstract)
+        duplicate_title     = ProposalFactory(people=[p2], title=base_title)
+        similar_title       = ProposalFactory(people=[p1,p2,p3], title=similar_title)
+        duplicate_abstract  = ProposalFactory(people=[p3], abstract=base_abstract)
+        similar_abstract    = ProposalFactory(people=[p2,p1], abstract=similar_abstract)
+        dissimilar          = ProposalFactory(people=[p3], title=dissimilar_title, abstract=dissimilar_abstract)
+
+        pers = PersonFactory(roles=[RoleFactory(name='reviewer')])
+
+        db_session.commit()
+
+        do_login(app, pers)
+
+        resp = app.get('/proposal/%d/view' % base.id)
+
+        parser = TableParser(id="duplicates")
+        parser.feed(resp.body)
+        dup_table = parser.tables[0]
+
+        assert len(dup_table) == 5 # 2 title dups + 2 abstract dups + heading
+        # Each table row is (people, title)
+        titles = [dup_table[i][1] for i in range(1,5)]
+        for test_dup in [duplicate_title, similar_title, duplicate_abstract, similar_abstract]:
+            assert test_dup.title in titles
+            assert dup_table[titles.index(test_dup.title)+1][0] == ", ".join([x.fullname for x in test_dup.people])
+
+        # No duplicates -> no table
+        resp = app.get('/proposal/%d/view' % dissimilar.id)
+        parser = TableParser(id="duplicates")
+        parser.feed(resp.body)
+        assert parser.tables == []
+

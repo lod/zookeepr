@@ -443,6 +443,7 @@ table.zebra { border-collapse: collapse }
 /* Proposal review scores are an odd table */
 table.review_scores {
 	border-collapse: collapse;
+	margin-top: 2em;
 }
 table.review_scores tbody {
 	border-top: 1px solid black;

@@ -216,11 +216,11 @@ class FulfilmentItemFactory(_ModelFactory):
 class ProposalFactory(_ModelFactory):
     class Meta: model = Proposal
     id                     = factory.Sequence(lambda n: n)
-    title                  = factory.Sequence(lambda n: "title %03d" % n)
-    abstract               = factory.Sequence(lambda n: "abstract %03d" % n)
-    private_abstract       = factory.Sequence(lambda n: "private_abstract %03d" % n)
+    # Title and abstract need to be different enough not to trigger duplicate detector
+    title                  = factory.LazyAttribute(lambda x: faker.sentence(nb_words=6, variable_nb_words=True))
+    abstract               = factory.LazyAttribute(lambda x: faker.paragraphs(nb=3))
+    private_abstract       = factory.LazyAttribute(lambda x: faker.paragraphs(nb=1))
     technical_requirements = factory.Sequence(lambda n: "technical_requirements %03d" % n)
-    title                  = factory.Sequence(lambda n: "title %03d" % n)
     project                = factory.Sequence(lambda n: "project %03d" % n)
 
     video_release  = True

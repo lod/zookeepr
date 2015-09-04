@@ -286,6 +286,7 @@ class Proposal(Base):
         result = Session.query(Proposal).filter_by(id=id,status_id=1).one()
         return result
 
+    # TODO: Shouldn't be classmethod - current -> self
     @classmethod
     def find_next_proposal(cls, current, person):
         withdrawn = ProposalStatus.find_by_name('Withdrawn')
@@ -314,3 +315,54 @@ class Proposal(Base):
         else:
             # looks like you've reviewed everything!
             return None
+
+    def find_duplicates(self):
+        pending = ProposalStatus.find_by_name('Pending Review')
+
+        # Use advanced database options if they are available
+        if Session.get_bind().name == 'postgresql':
+            # Use two different text comparison algorithms
+            # levenshtein calculates the number of character changes required
+            # to convert one string to another, it is good for small blocks of text.
+            # similarity from pg_trgm uses trigrams, it creates groups of three
+            # letters and performs a frequency analysis. This is good for larger
+            # blocks of text but bad for short sentences.
+            # 
+            # levenshtein_less_equal requires the fuzzystrmatch extension
+            # similarity requires the pg_trgm extension
+            # Both are distributed with Postgresql 9.4 but not part of the core
+
+            # Significant performance optimization on similarity
+            # % operation is equivilent to: similarity(p1.abstract, p2.abstract) > 0.8
+            # Resulting performance is fairly good, cost=8.44..20.49
+            # On the 2016 full submission data set my ancient laptop takes
+            # 0.3ms to plan, 4.5ms to execute
+            # The identical match is not too much faster: 0.15..52.48, 0.3ms, 1.1ms
+            Session.execute("SELECT set_limit(0.8)")
+
+            return Session.query(Proposal).from_statement(sa.text("""
+                    SELECT p2.id
+                    FROM proposal as p1, proposal as p2
+                    WHERE p1.id <> p2.id
+                    AND p1.id = %d
+                    AND p2.status_id = %d
+                    AND (
+                        p1.title %% p2.title
+                        OR
+                        p1.abstract %% p2.abstract
+                    )
+                """ % (self.id, pending.id))).all()
+        else:
+            # Fallback option - just do an identical text match
+            return Session.query(Proposal).from_statement(sa.text("""
+                    SELECT p2.id
+                    FROM proposal as p1, proposal as p2
+                    WHERE p1.id <> p2.id
+                    AND p1.id = %d
+                    AND p2.status_id = %d
+                    AND (
+                        p1.title = p2.title
+                        OR
+                        p1.abstract = p2.abstract
+                    )
+                """ % (self.id, pending.id))).all()

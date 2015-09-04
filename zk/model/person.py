@@ -46,6 +46,7 @@ class Person(Base):
     # the lengths of the fields are chosen arbitrarily
     firstname = sa.Column(sa.types.Text)
     lastname = sa.Column(sa.types.Text)
+    # TODO: I think fullname doesn't work if lastname is not set
     fullname = sa.orm.column_property(firstname + " " + lastname)
     address1 = sa.Column(sa.types.Text)
     address2 = sa.Column(sa.types.Text)

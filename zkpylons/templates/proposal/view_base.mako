@@ -44,7 +44,28 @@
 % endif
 
 % if h.auth.authorized(h.auth.Or(h.auth.has_organiser_role, h.auth.has_reviewer_role, h.auth.has_proposals_chair_role)):
-  <br><br>
+  % if len(c.duplicates):
+    <h3>Possible duplicates</h3>
+    <table id="duplicates">
+      <tr>
+        <th>Submitters</th>
+        <th>Title</th>
+      </tr>
+      % for dup in c.duplicates:
+        <tr>
+			<td>${ ", ".join([h.link_to(
+					x.fullname or x.id,
+					url=h.url_for(controller='person', id=x.id)
+				) for x in dup.people]) |n}</td>
+			<td>${ h.link_to(dup.title, url=h.url_for(controller='proposal',id=dup.id)) }</td>
+        </tr>
+      % endfor
+    </table>
+  % endif
+% endif
+
+
+% if h.auth.authorized(h.auth.Or(h.auth.has_organiser_role, h.auth.has_reviewer_role, h.auth.has_proposals_chair_role)):
   <table class="review_scores">
     % for r in c.proposal.reviews:
       <tbody>
