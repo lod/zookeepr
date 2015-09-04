@@ -8,7 +8,7 @@ from zk.model.review import Review
 from webtest.forms import Upload
 
 from .fixtures import PersonFactory, ProposalFactory, AttachmentFactory, RoleFactory, StreamFactory, ProposalStatusFactory, ProposalTypeFactory, TravelAssistanceTypeFactory, AccommodationAssistanceTypeFactory, TargetAudienceFactory, ConfigFactory, CompletePersonFactory
-from .utils import do_login, isSignedIn
+from .utils import do_login, isSignedIn, TableParser
 
 class TestProposal(object):
 
@@ -366,7 +366,32 @@ class TestProposal(object):
         assert "Proposal Review" in unicode(resp.body, 'utf-8')
         assert "stalk on Google" in unicode(resp.body, 'utf-8')
 
+    def test_approve(self, app, db_session):
+        """ Giant list of talks allows changing status/approval """
 
+        organiser = CompletePersonFactory(roles=[RoleFactory(name = 'organiser')])
+        t1 = ProposalTypeFactory()
+        t2 = ProposalTypeFactory()
+        t3 = ProposalTypeFactory()
+
+        for i in range(5):
+            ProposalFactory(type=t2)
+        for i in range(5):
+            ProposalFactory(type=t3)
+        for i in range(5):
+            ProposalFactory(type=t1)
+        for i in range(5):
+            ProposalFactory(type=t2)
+
+        db_session.commit()
+        do_login(app, organiser)
+        resp = app.get(url_for(controller='proposal', action='approve'))
+
+        parser = TableParser()
+        parser.feed(resp.body)
+
+        # Table for each Proposal Type
+        assert len(parser.tables) == 3
 
 # TODO: Test for when proposal_editing is closed/open/not_open
 

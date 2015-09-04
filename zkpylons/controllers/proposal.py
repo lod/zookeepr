@@ -404,7 +404,6 @@ class ProposalController(BaseController):
     @authorize(h.auth.has_organiser_role)
     def approve(self):
         c.highlight = set()
-        c.proposals = Proposal.find_all()
         c.statuses = ProposalStatus.find_all()
         return render("proposal/approve.mako")
 
