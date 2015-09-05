@@ -254,19 +254,6 @@ class Proposal(Base):
             abort(404, "No such proposal object")
         return result
 
-    # TODO: add an optional filter for removing the signed in user's proposals
-    @classmethod
-    def find_all_by_proposal_type_id(cls, id, abort_404 = True, include_withdrawn=True):
-        result = Session.query(Proposal).filter_by(proposal_type_id=id)
-        if not include_withdrawn:
-            withdrawn = ProposalStatus.find_by_name('Withdrawn')
-            result = result.filter(Proposal.status_id != withdrawn.id)
-
-        result = result.all()
-        if result is None and abort_404:
-            abort(404, "No such proposal object")
-        return result
-
     @classmethod
     def find_all_accepted(cls):
         return Session.query(Proposal).filter(ProposalStatus.name=='Accepted')
@@ -289,13 +276,14 @@ class Proposal(Base):
     # TODO: Shouldn't be classmethod - current -> self
     @classmethod
     def find_next_proposal(cls, current, person):
-        withdrawn = ProposalStatus.find_by_name('Withdrawn')
+        """ Find next proposal for reviewer to review """
+        pending = ProposalStatus.find_by_name('Pending Review')
         q = Session.query(Proposal).from_statement(sa.text("""
                 SELECT p.id FROM (
                         SELECT id
                         FROM proposal
                         WHERE id <> %d
-                        AND status_id <> %d
+                        AND status_id = %d
                         AND proposal_type_id = %d
                     EXCEPT
                         SELECT proposal_id AS id
@@ -308,7 +296,7 @@ class Proposal(Base):
                 ) as p
                 ORDER BY RANDOM()
                 LIMIT 1
-        """ % (current.id, withdrawn.id, current.type.id, person.id, person.id)))
+        """ % (current.id, pending.id, current.type.id, person.id, person.id)))
         next = q.first()
         if next is not None:
             return cls.find_by_id(next.id, abort_404=False)

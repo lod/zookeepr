@@ -141,10 +141,10 @@ class TestProposal(object):
     def test_find_next_proposal(self, db_session):
         """ Find the next proposal for a reviewer to look at.
             Do not select a proposal that the reviewer has already reviewed.
-            Do not select a proposal that has been withdrawn.
             Do not select the current proposal.
             Do not select a proposal that was written by the reviewer.
             Select a proposal of the same type as the current proposal.
+            Select a proposal with the status 'Pending Review'
             Select a random proposal of those remaining.
         """
 
@@ -153,6 +153,7 @@ class TestProposal(object):
         t1 = ProposalTypeFactory()
         t2 = ProposalTypeFactory()
         withdrawn = ProposalStatusFactory(name="Withdrawn")
+        pending = ProposalStatusFactory(name="Pending Review")
         review_role = RoleFactory(name="reviewer")
         fred = PersonFactory.create(url_hash="XXX")
         db_session.flush()
@@ -167,7 +168,7 @@ class TestProposal(object):
 
         # Unreviewed proposals
         for i in range(10):
-            prop = ProposalFactory(type=t1)
+            prop = ProposalFactory(type=t1, status=pending)
             good.append(prop.id)
 
         # Withdrawn proposals
@@ -175,43 +176,48 @@ class TestProposal(object):
             prop = ProposalFactory(type=t1, status=withdrawn)
             bad.append(prop.id)
 
+        # Other status proposals
+        for i in range(3):
+            prop = ProposalFactory(type=t1, status=ProposalStatusFactory())
+            bad.append(prop.id)
+
         # Reviewed proposals
         for i in range(5):
-            prop = ProposalFactory(type=t1)
+            prop = ProposalFactory(type=t1, status=pending)
             ReviewFactory(reviewer=r1, proposal=prop)
             bad.append(prop.id)
 
         # Proposals reviewed by other reviewer
         for i in range(5):
-            prop = ProposalFactory(type=t1)
+            prop = ProposalFactory(type=t1, status=pending)
             ReviewFactory(reviewer=r2, proposal=prop)
             good.append(prop.id)
 
         # Proposals reviewed by both reviewers
         for i in range(3):
-            prop = ProposalFactory(type=t1)
+            prop = ProposalFactory(type=t1, status=pending)
             ReviewFactory(reviewer=r1, proposal=prop)
             ReviewFactory(reviewer=r2, proposal=prop)
             bad.append(prop.id)
 
         # Proposals written by reviewer
         for i in range(5):
-            prop = ProposalFactory(type=t1, people=[r1])
+            prop = ProposalFactory(type=t1, people=[r1], status=pending)
             bad.append(prop.id)
 
         # Proposals written by other reviewer
         for i in range(5):
-            prop = ProposalFactory(type=t1, people=[r2])
+            prop = ProposalFactory(type=t1, people=[r2], status=pending)
             good.append(prop.id)
 
         # Proposals written by both reviewers
         for i in range(5):
-            prop = ProposalFactory(type=t1, people=[r1, r2])
+            prop = ProposalFactory(type=t1, people=[r1, r2], status=pending)
             bad.append(prop.id)
 
         # Proposals of wrong type
         for i in range(5):
-            prop = ProposalFactory(type=t2)
+            prop = ProposalFactory(type=t2, status=pending)
             bad.append(prop.id)
 
         frequency = {x:0 for x in good}
@@ -233,13 +239,13 @@ class TestProposal(object):
     def test_duplicate_titles(self, db_session):
         db_session.execute("CREATE EXTENSION fuzzystrmatch;")
         db_session.execute("CREATE EXTENSION pg_trgm;")
-        withdrawn = ProposalStatusFactory(name="Withdrawn")
+        pending = ProposalStatusFactory(name="Pending Review")
 
-        base       = ProposalFactory(title="An identical title discussing some detail")
-        duplicate  = ProposalFactory(title="An identical title discussing some detail")
-        similar    = ProposalFactory(title="An identical title discussing some details")
-        dissimilar = ProposalFactory(title="A dissimilar title conversing on a beach")
-        pulled     = ProposalFactory(title="An identical title discussing some detail", status=withdrawn)
+        base        = ProposalFactory(title="An identical title discussing some detail", status=pending)
+        duplicate   = ProposalFactory(title="An identical title discussing some detail", status=pending)
+        similar     = ProposalFactory(title="An identical title discussing some details", status=pending)
+        dissimilar  = ProposalFactory(title="A dissimilar title conversing on a beach", status=pending)
+        not_pending = ProposalFactory(title="An identical title discussing some detail", status=ProposalStatusFactory())
 
         dups = base.find_duplicates()
         assert len(dups) == 2
@@ -264,6 +270,7 @@ class TestProposal(object):
         db_session.execute("CREATE EXTENSION fuzzystrmatch;")
         db_session.execute("CREATE EXTENSION pg_trgm;")
         withdrawn = ProposalStatusFactory(name="Withdrawn")
+        pending = ProposalStatusFactory(name="Pending Review")
 
         base_abstract = """
             Lorem ipsum dolor sit amet, est meis mentitum ea. Amet appareat nec ne. Ad habeo oblique accumsan usu, summo nobis contentiones ea vix. Duo id iisque discere, nullam principes sit eu. At qui saepe principes voluptatibus.
@@ -279,14 +286,14 @@ Has ut vidit partiendo posidonium, te liber aperiam nominati sed. An duo magna n
             Dang ipsizzle dolizzle sit amizzle, ass adipiscing i'm in the shizzle. Nullizzle gangsta velizzle, crazy volutpat, suscipizzle quis, shut the shizzle up vizzle, sizzle. Fizzle eget go to hizzle. Get down get down erizzle. Fizzle dope ghetto shiznit turpis tempus mah nizzle. Fo shizzle my nizzle crazy nibh et turpizzle. Dizzle in crazy. Shizzlin dizzle black rhoncizzle daahng dawg. In hac habitasse platea dictumst. Things dapibizzle. Curabitur gangsta crazy, i'm in the shizzle eu, mattizzle sizzle, eleifend bizzle, nunc. Dawg suscipizzle. Integizzle sempizzle velizzle sizzle boofron.
             """
 
-        base       = ProposalFactory(abstract = base_abstract)
-        duplicate  = ProposalFactory(abstract = base_abstract)
-        similar    = ProposalFactory(abstract = similar_abstract)
-        dissimilar = ProposalFactory(abstract = dissimilar_abstract)
+        base       = ProposalFactory(abstract = base_abstract, status=pending)
+        duplicate  = ProposalFactory(abstract = base_abstract, status=pending)
+        similar    = ProposalFactory(abstract = similar_abstract, status=pending)
+        dissimilar = ProposalFactory(abstract = dissimilar_abstract, status=pending)
         pulled     = ProposalFactory(abstract = base_abstract, status=withdrawn)
 
-        empty1     = ProposalFactory(abstract = "")
-        empty2     = ProposalFactory(abstract = "")
+        empty1     = ProposalFactory(abstract = "", status=pending)
+        empty2     = ProposalFactory(abstract = "", status=pending)
         db_session.commit()
 
         dups = base.find_duplicates()

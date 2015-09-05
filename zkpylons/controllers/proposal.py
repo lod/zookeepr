@@ -351,12 +351,14 @@ class ProposalController(BaseController):
     def review_index(self):
         c.person = h.signed_in_person()
         reviewer_role = Role.find_by_name('reviewer')
+        pending = ProposalStatus.find_by_name('Pending Review')
         c.num_reviewers = len(reviewer_role.people)
 
         ProposalGroup = namedtuple('ProposalGroup', ['name', 'simple_name', 'proposals', 'min_reviews'])
         c.groups = []
         for pt in c.proposal_types:
-            proposals = Proposal.find_all_by_proposal_type_id(pt.id, include_withdrawn=False)
+            # Only want proposals which are pending review
+            proposals = [x for x in pt.proposals if x.status == pending]
 
             # Get rid of the reviewer's proposals
             proposals = [x for x in proposals if c.person not in x.people]
@@ -369,12 +371,13 @@ class ProposalController(BaseController):
             random.shuffle(proposals)
             proposals.sort(cmp = lambda x, y: cmp(len(x.reviews), len(y.reviews)))
 
-            c.groups.append(ProposalGroup(
-                name        = pt.name,
-                simple_name = re.sub('\W', '', pt.name),
-                proposals   = proposals,
-                min_reviews = min([len(x.reviews) for x in proposals] or [0]),
-                ))
+            if len(proposals):
+                c.groups.append(ProposalGroup(
+                    name        = pt.name,
+                    simple_name = re.sub('\W', '', pt.name),
+                    proposals   = proposals,
+                    min_reviews = min([len(x.reviews) for x in proposals] or [0]),
+                    ))
 
         # Refetch because we have trimmed so many proposals out, this includes withdrawn talks - ok to be a few out
         c.num_proposals = Proposal.count_all()
@@ -383,16 +386,18 @@ class ProposalController(BaseController):
 
     @authorize(h.auth.has_reviewer_role)
     def summary(self):
+        c.pending_status = ProposalStatus.find_by_name('Pending Review')
         ProposalGroup = namedtuple('ProposalGroup', ['name', 'simple_name', 'proposals', 'min_reviews'])
         c.groups = []
         for pt in c.proposal_types:
-            proposals = Proposal.find_all_by_proposal_type_id(pt.id, include_withdrawn=False)
-            c.groups.append(ProposalGroup(
-                name        = pt.name,
-                simple_name = re.sub('\W', '', pt.name),
-                proposals   = proposals,
-                min_reviews = min([len(x.reviews) for x in proposals] or [0]),
-                ))
+            proposals = pt.proposals
+            if len(proposals): 
+                c.groups.append(ProposalGroup(
+                    name        = pt.name,
+                    simple_name = re.sub('\W', '', pt.name),
+                    proposals   = proposals,
+                    min_reviews = min([len(x.reviews) for x in proposals] or [0]),
+                    ))
 
         return render('proposal/summary.mako')
 

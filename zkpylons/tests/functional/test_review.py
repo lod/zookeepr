@@ -16,7 +16,7 @@ class TestReviewController(object):
         prop2 = ProposalFactory()
         p = PersonFactory(roles=[RoleFactory(name='reviewer')])
 
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ProposalStatusFactory(name='Pending Review') # Required by code
 
 
         db_session.commit()
@@ -77,7 +77,7 @@ class TestReviewController(object):
         stream = StreamFactory()
         r1 = ReviewFactory(reviewer=p1, proposal=prop, score=-1, stream=stream)
         r2 = ReviewFactory(reviewer=p2, proposal=prop, score=2, stream=stream)
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ProposalStatusFactory(name='Pending Review') # Required by code
         db_session.commit()
 
         do_login(app, p1)
@@ -107,7 +107,7 @@ class TestReviewController(object):
         p1 = PersonFactory(roles=[RoleFactory(name='reviewer')])
         p2 = PersonFactory()
         prop = ProposalFactory(people=[p2])
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ProposalStatusFactory(name='Pending Review') # Required by code
         db_session.commit()
 
         do_login(app, p1)
@@ -149,7 +149,7 @@ class TestReviewController(object):
         p2 = PersonFactory()
         prop = ProposalFactory(people=[p2])
         r = ReviewFactory(proposal=prop, reviewer=p1, score=-2, comment="It's a hard luck life", miniconf="Worshipping lod", stream=s2)
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ProposalStatusFactory(name='Pending Review') # Required by code
         db_session.commit()
 
         do_login(app, p1)
@@ -291,7 +291,7 @@ class TestReviewController(object):
     def test_duplicate_proposal(self, app, db_session):
         """ Reviewers should be alerted to potential duplicate submissions. """
 
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        pending = ProposalStatusFactory(name='Pending Review') # Required by code
 
         p1 = CompletePersonFactory()
         p2 = CompletePersonFactory()
@@ -312,12 +312,12 @@ class TestReviewController(object):
         similar_abstract = base_abstract.replace("drumstick", "child meat")
         similar_abstract = similar_abstract.replace("pork", "holy")
 
-        base                = ProposalFactory(people=[p1], title=base_title, abstract=base_abstract)
-        duplicate_title     = ProposalFactory(people=[p2], title=base_title)
-        similar_title       = ProposalFactory(people=[p1,p2,p3], title=similar_title)
-        duplicate_abstract  = ProposalFactory(people=[p3], abstract=base_abstract)
-        similar_abstract    = ProposalFactory(people=[p2,p1], abstract=similar_abstract)
-        dissimilar          = ProposalFactory(people=[p3], title=dissimilar_title, abstract=dissimilar_abstract)
+        base                = ProposalFactory(people=[p1], status=pending, title=base_title, abstract=base_abstract)
+        duplicate_title     = ProposalFactory(people=[p2], status=pending, title=base_title)
+        similar_title       = ProposalFactory(people=[p1,p2,p3], status=pending, title=similar_title)
+        duplicate_abstract  = ProposalFactory(people=[p3], status=pending, abstract=base_abstract)
+        similar_abstract    = ProposalFactory(people=[p2,p1], status=pending, abstract=similar_abstract)
+        dissimilar          = ProposalFactory(people=[p3], status=pending, title=dissimilar_title, abstract=dissimilar_abstract)
 
         pers = PersonFactory(roles=[RoleFactory(name='reviewer')])
 

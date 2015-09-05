@@ -32,7 +32,7 @@ td.person > div { display: inline }
 
 <h2>Review Summary</h2>
 
-%for group in c.groups:
+% for group in c.groups:
 
   <a name="${ group.simple_name }"></a>
   <h2>${ group.name } proposals</h2>
@@ -47,7 +47,7 @@ td.person > div { display: inline }
       <th>Winning Stream</th>
     </tr>
 
-%   for proposal in group.proposals:
+    % for proposal in group.proposals:
     <tr>
       <td>
         ${ h.link_to(proposal.id, url=h.url_for(controller='proposal', action='view', id=proposal.id)) }
@@ -60,7 +60,7 @@ td.person > div { display: inline }
         </div>
       </td>
       <td class='person'>
-%       for person in proposal.people:
+        % for person in proposal.people:
           <div>
             ${ person.fullname },
             <div id="${ "bio%s" % person.id }" class="large_popup">
@@ -72,23 +72,27 @@ td.person > div { display: inline }
               <p> ${person.experience }</p>
             </div>
           </div>
-%       endfor
+        % endfor
       </td>
       <td class='score'>
-%       if proposal.average_score is None:
-          <b>No Reviews</b>
-%       else:
-          ${ "%0.2f" % proposal.average_score }
-          <div class="small_popup">
-%           for review in proposal.reviews:
-              ${ review.reviewer.fullname }:  ${ review.score }
-              <br>
-%           endfor
-          </div>
-%       endif
+        % if proposal.status == c.pending_status:
+          % if proposal.average_score is None:
+            <b>No Reviews</b>
+          % else:
+            ${ "%0.2f" % proposal.average_score }
+            <div class="small_popup">
+              % for review in proposal.reviews:
+                ${ review.reviewer.fullname }:  ${ review.score }
+                <br>
+              % endfor
+            </div>
+          % endif
+        % else:
+          ${ proposal.status.name }
+        % endif
       </td>
       <td>
-%       for review in proposal.reviews:
+        % for review in proposal.reviews:
           ${ h.link_to(review.reviewer.fullname, url=h.url_for(controller='review', action='view', id=review.id)) }, 
 %         if review.comment or review.private_comment:
             <div class="small_popup">
@@ -96,8 +100,8 @@ td.person > div { display: inline }
               <br>
               <b>${ review.reviewer.fullname } Private Comments:</b> ${ review.private_comment }
             </div>
-%         endif
-%       endfor
+          % endif
+        % endfor
       </td>
 
 <%
@@ -118,16 +122,16 @@ td.person > div { display: inline }
 
       <td>
         ${ highest_stream } (${ highest_stream_score })
-%       if streams:
+        % if streams:
           <div class="large_popup">
-%           for stream, score in streams.items():
+            % for stream, score in streams.items():
               ${ stream } : ${ str(score) }
               <br>
-%           endfor
+            % endfor
           </div>
-%       endif
+        % endif
       </td>
     </tr>
-%   endfor group.proposals
+    % endfor group.proposals
   </table>
 % endfor c.groups

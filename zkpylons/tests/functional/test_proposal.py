@@ -109,7 +109,6 @@ class TestProposal(object):
     def test_proposal_list_normals_denied(self, app, db_session):
         pers = PersonFactory()
         prop = ProposalFactory()
-        ProposalStatusFactory(name='Withdrawn') # Required by code
         db_session.commit()
 
         # we're logged in but still can't see it
@@ -120,7 +119,6 @@ class TestProposal(object):
         role = RoleFactory(name = 'reviewer')
         pers = PersonFactory(roles = [role])
         prop = ProposalFactory()
-        ProposalStatusFactory(name='Withdrawn') # Required by code
         db_session.commit()
 
         # we're logged in and we're a reviewer
@@ -151,7 +149,7 @@ class TestProposal(object):
         role = RoleFactory(name = 'reviewer')
         pers = PersonFactory(roles = [role])
         strm = StreamFactory() # need a stream
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ProposalStatusFactory(name='Pending Review') # Required by code
         db_session.commit()
 
         do_login(app, pers)
@@ -177,7 +175,6 @@ class TestProposal(object):
     def test_proposal_attach_more(self, app, db_session):
         pers = PersonFactory()
         prop = ProposalFactory(people = [pers])
-        ProposalStatusFactory(name='Withdrawn') # Required by code
         db_session.commit()
         
         # we're logged in and this is ours
@@ -245,7 +242,7 @@ class TestProposal(object):
         super_reviewer = CompletePersonFactory(roles=[organiser_role, reviewer_role])
         prop = ProposalFactory(people=[submitter,late_submitter])
 
-        ProposalStatusFactory(name='Withdrawn') # Required by code
+        ProposalStatusFactory(name = 'Pending Review') # Required by code
         ConfigFactory(key='proposal_editing', value='open')
         db_session.commit()
 
