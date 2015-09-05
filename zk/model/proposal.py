@@ -264,15 +264,6 @@ class Proposal(Base):
 
         return Session.query(Proposal).filter_by(status=status).filter_by(event=None).all()
 
-    @classmethod
-    def find_accepted_by_id(cls, id):
-        #status = ProposalStatus.find_by_name('Accepted')
-        #result = Session.query(Proposal).filter_by(id=id,status_id=status.id)
-
-        # Optimisation: assume that ProposalStatus of ID=1 is Accepted
-        result = Session.query(Proposal).filter_by(id=id,status_id=1).one()
-        return result
-
     # TODO: Shouldn't be classmethod - current -> self
     @classmethod
     def find_next_proposal(cls, current, person):

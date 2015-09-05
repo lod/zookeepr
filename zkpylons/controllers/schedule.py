@@ -281,13 +281,9 @@ class ScheduleController(BaseController):
         redirect_to('index')
 
     def view_talk(self, id):
-        try:
-            c.day = request.GET['day']
-        except:
-            c.day = 'all'
-        try:
-            c.talk = Proposal.find_accepted_by_id(id)
-        except:
+        c.day = request.GET.get('day', 'all')
+        c.talk = Proposal.find_by_id(id, abort_404 = False)
+        if c.talk is None or c.talk.status.name != 'Accepted':
             c.talk_id = id
             c.webmaster_email = Config.get('webmaster_email')
             return render('/schedule/invalid_talkid.mako')
