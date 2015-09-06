@@ -16,7 +16,7 @@
     </p>
 
     <p class="label"><span class="mandatory">*</span><span class="publishable">&#8224;</span><label for="proposal.abstract">Abstract:</label></p>
-    <p class="note">This will appear in the conference programme. You will have an opportunity to update it once the proposal is accepted, but it should reasonably reflect what you will be presenting, and in any case it will appear as-is on the website in the draft programme. Up to about 500 words.</p>
+	<p class="note">This will appear in the conference programme. You will have an opportunity to update it once the proposal is accepted, but it should reasonably reflect what you will be presenting, and in any case it will appear as-is on the website in the draft programme. Most abstracts are about 150 words.</p>
     <p class="entries">${ h.textarea('proposal.abstract', cols=70, rows=10) }</p>
 
     <p class="label"><label for="proposal.private_abstract">Private Abstract:</label></p>
