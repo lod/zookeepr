@@ -42,7 +42,7 @@ class ProposalSchema(BaseSchema):
 
     title = validators.String(not_empty=True)
     abstract = validators.String(not_empty=True)
-    private_abstract = validators.String()
+    private_abstract = validators.String(not_empty=False)
     technical_requirements = validators.String(not_empty=False)
     type = ProposalTypeValidator()
     audience = TargetAudienceValidator()

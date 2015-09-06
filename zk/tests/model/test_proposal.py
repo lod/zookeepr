@@ -237,7 +237,6 @@ class TestProposal(object):
         assert variance < 20 # Should be around 8-10
 
     def test_duplicate_titles(self, db_session):
-        db_session.execute("CREATE EXTENSION fuzzystrmatch;")
         db_session.execute("CREATE EXTENSION pg_trgm;")
         pending = ProposalStatusFactory(name="Pending Review")
 
@@ -267,7 +266,6 @@ class TestProposal(object):
         assert dups == []
 
     def test_duplicate_abstracts(self, db_session):
-        db_session.execute("CREATE EXTENSION fuzzystrmatch;")
         db_session.execute("CREATE EXTENSION pg_trgm;")
         withdrawn = ProposalStatusFactory(name="Withdrawn")
         pending = ProposalStatusFactory(name="Pending Review")
@@ -294,7 +292,6 @@ Has ut vidit partiendo posidonium, te liber aperiam nominati sed. An duo magna n
 
         empty1     = ProposalFactory(abstract = "", status=pending)
         empty2     = ProposalFactory(abstract = "", status=pending)
-        db_session.commit()
 
         dups = base.find_duplicates()
         assert len(dups) == 2
@@ -319,3 +316,8 @@ Has ut vidit partiendo posidonium, te liber aperiam nominati sed. An duo magna n
         dups = empty1.find_duplicates()
         assert len(dups) == 0
         assert dups == []
+
+
+    def test_issue_398_private_abstract_field_not_required(self, db_session):
+        ProposalFactory(private_abstract = None)
+        db_session.flush()

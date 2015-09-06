@@ -145,7 +145,7 @@ class Proposal(Base):
     title = sa.Column(sa.types.Text, nullable=False)
     # abstract or description
     abstract = sa.Column(sa.types.Text, nullable=False)
-    private_abstract = sa.Column(sa.types.Text, nullable=False)
+    private_abstract = sa.Column(sa.types.Text, nullable=True)
     technical_requirements = sa.Column(sa.types.Text, nullable=False)
 
     # type, enumerated in the proposal_type table
