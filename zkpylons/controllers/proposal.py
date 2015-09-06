@@ -114,7 +114,7 @@ class ProposalController(BaseController):
             'proposal.travel_assistance' : 1,
             'proposal.accommodation_assistance' : 1,
             'person.name': c.person.fullname,
-            'person.phone': c.person.phone,
+            'person.mobile': c.person.mobile,
             'person.experience': c.person.experience,
             'person.bio': c.person.bio,
             'person.url': c.person.url,
