@@ -415,3 +415,53 @@ h5 { font-size: 10pt; font-style: italic; }
   background-image: url('images/menuseparator.png');
 }
 /* end MenuSeparator */
+
+/* support bootstrap style form markup */
+/* Structural form section */
+.form-group {
+	display: block;
+}
+
+.form-group label {
+	display: inline-block;
+}
+
+.form-group input {
+	display: block;
+	width: 100%;
+}
+.form-group input[type="checkbox"], .form-group input[type="radio"] {
+	/* Undo previous block */
+	display: inline-block;
+	width: auto;
+}
+
+/* Horizontal form-group gets automatic clearfix hack */
+.form-horizontal .form-group:before, .form-horizontal .form-group:after {
+    content: " ";
+    display: table;
+}
+.form-horizontal .form-group:after {
+	clear: both;
+}
+
+.form-horizontal .form-group label {
+	text-align: right;
+	width: 20%;
+	float: left;
+	position: relative;
+}
+
+.form-horizontal .form-group input, .form-horizontal .form-group select {
+	width: 70%; /* Need to leave some space for border */
+	float: left;
+	position: relative;
+}
+
+/* Styling form section */
+.form-group label {
+	font-weight: 700;
+}
+fieldset {
+	margin: 10px 0;
+}
