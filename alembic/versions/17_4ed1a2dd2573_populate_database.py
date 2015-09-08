@@ -38,9 +38,11 @@ tables = [
     'special_offer',
     'funding_status',
     'proposal_status',
+    'product_include',
 ]
 
 tables_delete_order = [
+    'product_include',
     'social_network',
     'person_role_map',
     'person',
