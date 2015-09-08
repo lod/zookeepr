@@ -136,8 +136,8 @@ class ProductInclude(Base):
 
     @classmethod
     def find_by_category(cls, id):
-        return Session.query(ProductInclude).filter_by(include_category_id=id)
+        return Session.query(ProductInclude).filter_by(include_category=id).all()
 
     @classmethod
     def find_by_product(cls, id):
-        return Session.query(ProductInclude).filter_by(product_id=id)
+        return Session.query(ProductInclude).filter_by(product=id).all()

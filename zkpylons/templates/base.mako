@@ -43,6 +43,9 @@
         <script type="text/javascript" src="/jquery-1.7.1.min.js"></script>
         <script type="text/javascript" src="/js/jquery.cross-slide.min.js"></script>
         <script type="text/javascript">
+            document.cookie = "have_javascript=true" // tell serverside
+        </script>
+        <script type="text/javascript">
             jQuery(document).ready(function() {
                 jQuery("#flash > div").hide().fadeIn(3500);
                 jQuery("#flash > div").fadeTo(3000, 0.3);

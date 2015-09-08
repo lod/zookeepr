@@ -465,3 +465,8 @@ h5 { font-size: 10pt; font-style: italic; }
 fieldset {
 	margin: 10px 0;
 }
+
+/* Product display form styling */
+table.form-grid {
+	width: 100%;
+}

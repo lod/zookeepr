@@ -1,5 +1,5 @@
 <%page args="category, products"/>
-<table>
+<table class="form-grid">
   <tr>
     %for product in products:
       <th>

@@ -1,4 +1,17 @@
 <%page args="category, products"/>
+
+<script type="text/javascript">
+  function ticketWarning(tickettype){
+    var str=/student/i;
+    if(tickettype.match(str)){
+      jQuery('#warningDiv').slideDown(1000);
+    }
+    else{
+      jQuery('#warningDiv').slideUp(1000);
+    }
+  }
+</script>
+
 <ul class="entries">
   %for product in products:
     %if category.name == "Ticket":
