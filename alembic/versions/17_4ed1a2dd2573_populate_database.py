@@ -137,8 +137,8 @@ data = {
             'max_qty': 5, 'invoice_free_products': True, 'display_mode': 'grid',
             'min_qty': 0, 'display': 'qty', 'name': 'Penguin Dinner Ticket'},
         {
-            'description': 'Please indicate how many Speaker Dinner " \
-            "tickets you would like.',
+            'description': 'Please indicate how many Speaker Dinner ' \
+                'tickets you would like.',
             'display_order': 25,
             'note': (
                 "You should include yourself in this number, even if you "
@@ -152,14 +152,14 @@ data = {
             'display_mode': 'grid', 'min_qty': 0, 'display': 'qty',
             'name': 'Speakers Dinner Ticket'},
         {
-            'description': 'Please consider where you are going to stay " \
-            "during the conference.',
+            'description': 'Please consider where you are going to stay ' \
+                'during the conference.',
             'display_order': 30, 'note': None, 'max_qty': 10,
             'invoice_free_products': False, 'display_mode': None, 'min_qty': 0,
             'display': 'select', 'name': 'Accommodation'},
         {
-            'description': 'Please indicate interest for your partner and " \
-            "children to attend the Partners Programme.',
+            'description': 'Please indicate interest for your partner and ' \
+                'children to attend the Partners Programme.',
             'display_order': 40,
             'note': (
                 'This does NOT indicate your attendance and there will be an '
