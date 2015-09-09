@@ -469,4 +469,5 @@ fieldset {
 /* Product display form styling */
 table.form-grid {
 	width: 100%;
+	table-layout: fixed;
 }
