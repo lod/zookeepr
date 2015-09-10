@@ -23,9 +23,9 @@
       <td>
         %for (miniconf, product) in sorted(fields[day]):
           %if category.display == 'qty':
-            ${ h.text('products.product_' + product.clean_description(True) + '_qty', size=2, disabled=not product.available()) + ' ' + miniconf}
+            ${ h.text('products.product_' + product.clean_description(True) + '_qty', size=2, disabled=not product.available(), product_id=product.id) + ' ' + miniconf}
           %elif category.display == 'checkbox':
-            ${ h.checkbox('products.product_' + product.clean_description(True) + '_checkbox', label=miniconf, disabled=not product.available()) }
+            ${ h.checkbox('products.product_' + product.clean_description(True) + '_checkbox', label=miniconf, disabled=not product.available(), product_id=product.id) }
           %endif
           %if not product.available():
             <span class="mandatory">SOLD&nbsp;OUT</span>

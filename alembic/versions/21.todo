@@ -1,0 +1,12 @@
+Change Partners' Programme products display_order
+ 52 | Adult                  |            10
+ 53 | Child (3-14 years old) |            20
+ 54 | Infant (0-2 years old) |            30
+
+Penguin Dinner tickets should be the same (products 45, 46, 47)
+Speaker Dinner tickets too (products 48, 49, 50)
+
+Change category display order
+  6 | Partners' Programme    |            5
+
+
