@@ -3,7 +3,7 @@
   ## There is a non-js version which should be loaded if they don't have js
   ## So getting here probably means they are playing silly buggers enabling/disabling it
   ## Regardless, send them somewhere that can fix up the cookie state
-  ## TODO: build the cookie fixup page
+  ## TODO: build the cookie fixup page, create an override disable js cookie
 </noscript>
 
 <%
@@ -77,7 +77,6 @@
   function load_included_swag(product, target) {
     for (var category in product_includes[product]) {
       for (var i = 0; i < product_includes[product][category]; i++) {
-        console.log(category, product, i, product_includes[product][category]);
         load_product_group(category, target);
       }
     }
@@ -92,16 +91,17 @@
         jQuery("#additional_swag_list").append("<h3>Purchased</h3>");
       }
       cat_id = jQuery(this).attr('category_id');
-      console.log("CLICK", this, jQuery(this).attr('category_id'));
+      // TODO: Add price onto the display
       load_product_group(cat_id, jQuery("#additional_swag_list"));
+      // TODO: Add to price summary
     });
 
     jQuery("#additional_swag_buttons").append(button);
   }
 
 
-
   // Functions to manage the price summary
+  // TODO: Should sort the list, by cat display order then product display order
   function update_price_total() {
     // Tally up the last column
     total = 0;

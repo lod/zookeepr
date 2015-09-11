@@ -51,9 +51,16 @@
   });
 
   jQuery("#partner_details input[type=text][name^='products.product_']").on('change', update_text_price);
-  // TODO: Set state based on incoming data
+
+  // Set state based on incoming data
   jQuery("#partner_details").hide();
   jQuery('#partners_programme input[value=""]:radio').prop('checked', true);
+  jQuery("#partner_details input[type=text][name^='products.product_']").each(function(){
+    if (parseInt(jQuery(this).val()) > 0) {
+      jQuery('input[name="partner_visibility"][value=true]:radio').attr('checked', true);
+      jQuery("#partner_details").show()
+    }
+  });
 
   // Update swag and price lists based on initial values
   jQuery(function(){

@@ -19,6 +19,6 @@
   // On page load load the swag and price for the selected ticket
   jQuery(function(){
     load_included_swag(jQuery('#ticket input[name=products.category_Ticket]:checked').val());
-    update_radio_price.apply(jQuery("#ticket_div input[type='radio']:checked"));
+	jQuery("#ticket_div input[type='radio']:checked").each(update_radio_price);
   });
 </script>
