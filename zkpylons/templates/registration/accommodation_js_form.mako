@@ -1,6 +1,12 @@
-<%page args="category, products"/>
 <%
   import re
+  from zkpylons.model import ProductCategory
+
+  category = ProductCategory.find_by_name('Accommodation')
+  all_products = category.available_products(c.signed_in_person, stock=False)
+  products = [x for x in all_products if c.product_available(x, stock=False)]
+  products.sort(key=lambda p: p.display_order)
+
   fields = {}
   for product in products:
     results = re.match("^([a-zA-Z0-9'_]+)\s+(.*)$", product.description)
@@ -12,6 +18,9 @@
     fields[day].append((accom, product))
   endfor
 %>
+
+${products}
+
 <table>
   <tr>
     %for day in sorted(fields):
@@ -39,5 +48,33 @@
     %endfor
   </tr>
 </table>
+
+<script>
+  $('div[id$="double_div"]').hide();
+  $('div[id$="double_breakfast_div"]').hide();
+  $('div[id$="single_breakfast_div"]').hide();
+
+  function accommdisplay() {
+    if (jQuery('input[id="breaky_accomm_option"]').attr('checked')) {
+      jQuery('div[id$="breakfast_div"]').show();
+      jQuery('div[id$="double_div"]').hide();
+      jQuery('div[id$="single_div"]').hide();
+    } else {
+      jQuery('div[id$="breakfast_div"]').hide();
+      jQuery('div[id$="double_div"]').show();
+      jQuery('div[id$="single_div"]').show();
+    }
+    if (jQuery('input[id="double_accomm_option"]').attr('checked')) {
+      jQuery('div[id*="_single_"]').hide();
+    } else {
+      jQuery('div[id*="_double_"]').hide();
+    }
+    jQuery('input[id*="_accommodation_"]').attr('checked', false);
+  }
+
+  $('input[id$="accomm_option"]').change( function() {
+    accommdisplay();
+  });
+</script>
 
 <%include file="accommodation_name_form.mako" args="category=category, products=products" />

@@ -43,7 +43,7 @@
         <script type="text/javascript" src="/jquery-1.7.1.min.js"></script>
         <script type="text/javascript" src="/js/jquery.cross-slide.min.js"></script>
         <script type="text/javascript">
-            document.cookie = "have_javascript=true" // tell serverside
+            document.cookie = "have_javascript=true;path=/" // tell serverside
         </script>
         <script type="text/javascript">
             jQuery(document).ready(function() {

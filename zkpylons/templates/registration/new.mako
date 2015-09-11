@@ -44,7 +44,11 @@ ${ c.special_offer.description | n }
         ${ h.hidden('special_offer.member_number', '') }
 %endif
 
-<%include file="form.mako" />
+%if h.request.cookies.get('have_javascript') == "true":
+  <%include file="form.mako" />
+%else:
+  <%include file="nonjs_form.mako" />
+%endif
 
 %if not c.signed_in_person.i_agree:
         <p>${ h.checkbox('person.i_agree') } <label for="personi_agree">I agree to the</label> <a href="/cor/terms_and_conditions" target="_blank">terms and conditions</a></p>
