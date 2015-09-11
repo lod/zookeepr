@@ -33,7 +33,32 @@
     if (Boolean(jQuery(this).val()))
       jQuery('#partner_details input[name="products.product_Partners Programme_Adult_qty"]').val(1)
   })
+
+  function update_partner_program() {
+    jQuery("#partner_swag_list").empty();
+    jQuery("#partner_swag_list").append("<h3>Provided as part of "+product_categories[${category.id}]['name']+"</h3>");
+
+    product_categories[${category.id}]['products'].forEach(function(product){
+      val = jQuery("#"+to_id("products.product_"+products[product]['clean_description']+'_qty')).val()
+      for(var i=0; i < val; i++) {
+        load_included_swag(product, jQuery("#partner_swag_list"));
+      }
+    });
+  }
+
+  product_categories[${category.id}]['products'].forEach(function(product){
+    jQuery("#"+to_id("products.product_"+products[product]['clean_description']+'_qty')).change(update_partner_program);
+  });
+
+  jQuery("#partner_details input[type=text][name^='products.product_']").on('change', update_text_price);
   // TODO: Set state based on incoming data
   jQuery("#partner_details").hide();
   jQuery('#partners_programme input[value=""]:radio').prop('checked', true);
+
+  // Update swag and price lists based on initial values
+  jQuery(function(){
+    update_partner_program()
+    jQuery("#partner_details input[type=text][name^='products.product_']").each(update_text_price);
+  });
+
 </script>

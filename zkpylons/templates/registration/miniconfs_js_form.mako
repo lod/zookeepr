@@ -11,3 +11,11 @@
   <input type="hidden" name="${'products.error.' + category.clean_name()}">
   <%include file="miniconf_form.mako" args="category=category, products=products" />
 </fieldset>
+<script>
+  jQuery("#${h.computer_title(category.name)} input[type='checkbox'][name^='products.product_']").on('change', update_checkbox_price);
+
+  jQuery(function(){
+    jQuery("#${h.computer_title(category.name)} input[type='checkbox'][name^='products.product_']:checked").each(update_checkbox_price);
+  });
+
+</script>

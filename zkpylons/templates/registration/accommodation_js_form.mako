@@ -21,14 +21,16 @@
   %else:
     <div class="form-group"></div>
     <p>Please see the <a href="/register/accommodation" target="_blank">accommodation page</a> for prices and details.</p>
-	<script>
-		select = build_select_product_group(${category.id});
-		// Add a dummy first option - force the user to select something
-		// This avoids people turning up assuming accommodation is provided
-		select.prepend("<option>--</option>");
-		jQuery(select.children()[0]).prop('selected', true);
-		// TODO: Set selected based on input data
-		jQuery("#${ h.computer_title(category.name) } div").append(select);
-	</script>
+  <script>
+    select = build_select_product_group(${category.id});
+    // Add a dummy first option - force the user to select something
+    // This avoids people turning up assuming accommodation is provided
+    select.prepend("<option>--</option>");
+    jQuery(select.children()[0]).prop('selected', true);
+    // TODO: Set selected based on input data
+    jQuery("#${ h.computer_title(category.name) } div").append(select);
+  </script>
   %endif
 </fieldset>
+
+## TODO: push selection into the price summary

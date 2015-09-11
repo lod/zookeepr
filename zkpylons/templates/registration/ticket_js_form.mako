@@ -14,6 +14,11 @@
     load_included_swag(product, jQuery("#ticket_swag_list"));
   });
 
-  // On page load load the swag for the selected ticket
-  load_included_swag(jQuery('#ticket input[name=products.category_Ticket]:checked').val());
+  jQuery("#ticket_div input[type='radio']").on('change', update_radio_price);
+
+  // On page load load the swag and price for the selected ticket
+  jQuery(function(){
+    load_included_swag(jQuery('#ticket input[name=products.category_Ticket]:checked').val());
+    update_radio_price.apply(jQuery("#ticket_div input[type='radio']:checked"));
+  });
 </script>

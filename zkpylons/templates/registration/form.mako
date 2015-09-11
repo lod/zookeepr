@@ -129,6 +129,38 @@
 
     update_price_total();
   }
+
+  function update_text_price() {
+    var id = jQuery(this).attr('product_id');
+    var product = products[id];
+    var category = product_categories[product['category']];
+    if (product.cost != 0 || category['invoice_free_products']) {
+      update_price_row(id, category.name+" - "+product.description, product.cost, jQuery(this).val());
+    }
+  }
+
+  function update_radio_price() {
+    var cat_id = jQuery(this).attr('category_id');
+    var product_id = jQuery(this).attr('value');
+    var product = products[product_id];
+    // If it is free and we hide free we need to hide the row
+    // This requires deletion, in case we previously had a visible option
+    // Easiest way to do this is with a quantity of zero to trigger it
+    var qty = product.cost != 0 || product_categories[cat_id]['invoice_free_products'] ? 1 : 0;
+    update_price_row("C"+cat_id, product.description, product.cost, qty);
+  }
+
+  function update_checkbox_price() {
+    var product_id = jQuery(this).attr('product_id');
+    var product = products[product_id];
+    var category = product_categories[product['category']];
+    var qty = jQuery(this).attr('checked') ? 1 : 0
+
+    if (product.cost != 0 || category['invoice_free_products']) {
+      update_price_row(product_id, category.name+" - "+product.description, product.cost, qty);
+    }
+  }
+
 </script>
 
 
@@ -160,29 +192,6 @@
   <div id="additional_swag_list"></div>
   <div id="additional_swag_buttons"></div>
 </fieldset>
-
-<script>
-  // Partner's program
-
-  var partner_cat = 6; // TODO: Shouldn't hardcode this
-  function update_partner_program() {
-    jQuery("#partner_swag_list").empty();
-    jQuery("#partner_swag_list").append("<h3>Provided as part of "+product_categories[partner_cat]['name']+"</h3>");
-
-    product_categories[partner_cat]['products'].forEach(function(product){
-      val = jQuery("#"+to_id("products.product_"+products[product]['clean_description']+'_qty')).val()
-      for(var i=0; i < val; i++) {
-        load_included_swag(product, jQuery("#partner_swag_list"));
-      }
-    });
-  }
-
-  product_categories[partner_cat]['products'].forEach(function(product){
-    jQuery("#"+to_id("products.product_"+products[product]['clean_description']+'_qty')).change(update_partner_program);
-  });
-
-</script>
-
 
 <fieldset>
   <%include file="further_information_form.mako" />
@@ -226,50 +235,3 @@
     </tfoot>
   </table>
 </fieldset>
-
-<script>
-  radio_boxes = jQuery("input[type='radio'][name^='products.category_']:checked");
-  check_boxes = jQuery("input[type='checkbox'][name^='products.product_']:checked");
-  text_boxes = jQuery.grep(jQuery("input[type=text][name^='products.product_']"), function(x){return x.value > 0});
-
-
-  function update_text_price(text_input) {
-    var id = jQuery(text_input).attr('product_id');
-    var product = products[id];
-    var category = product_categories[product['category']];
-    if (product.cost != 0 || category['invoice_free_products']) {
-      update_price_row(id, category.name+" - "+product.description, product.cost, text_input.val());
-    }
-  }
-
-  function update_radio_price(radio_input) {
-    var cat_id = jQuery(radio_input).attr('category_id');
-    var product_id = jQuery(radio_input).attr('value');
-    var product = products[product_id];
-    // If it is free and we hide free we need to hide the row
-    // This requires deletion, in case we previously had a visible option
-    // Easiest way to do this is with a quantity of zero to trigger it
-    var qty = product.cost != 0 || product_categories[cat_id]['invoice_free_products'] ? 1 : 0;
-    update_price_row("C"+cat_id, product.description, product.cost, qty);
-  }
-
-  function update_checkbox_price(cb_input) {
-    var product_id = jQuery(cb_input).attr('product_id');
-    var product = products[product_id];
-    var category = product_categories[product['category']];
-    var qty = cb_input.attr('checked') ? 1 : 0
-
-    if (product.cost != 0 || category['invoice_free_products']) {
-      update_price_row(product_id, category.name+" - "+product.description, product.cost, qty);
-    }
-  }
-
-  jQuery("input[type=text][name^='products.product_']").on('change', function(){update_text_price(jQuery(this))});
-  jQuery("input[type=text][name^='products.product_']").each(function(){update_text_price(jQuery(this))});
-
-  jQuery("input[type='radio'][name^='products.category_']").on('change', function(){update_radio_price(jQuery(this))});
-  jQuery("input[type='radio'][name^='products.category_']:checked").each(function(){update_radio_price(jQuery(this))});
-
-  jQuery("input[type='checkbox'][name^='products.product_']").on('change', function(){update_checkbox_price(jQuery(this))});
-  jQuery("input[type='checkbox'][name^='products.product_']:checked").each(function(){update_checkbox_price(jQuery(this))});
-</script>
