@@ -14,6 +14,6 @@
     load_included_swag(product, jQuery("#ticket_swag_list"));
   });
 
-  // On page load load the swag for the selected ticket$
-  load_included_swag(jQuery('#ticket input[name=products.category_Ticket]:checked').val());$
+  // On page load load the swag for the selected ticket
+  load_included_swag(jQuery('#ticket input[name=products.category_Ticket]:checked').val());
 </script>

@@ -1,80 +1,34 @@
 <%
-  import re
   from zkpylons.model import ProductCategory
-
   category = ProductCategory.find_by_name('Accommodation')
-  all_products = category.available_products(c.signed_in_person, stock=False)
-  products = [x for x in all_products if c.product_available(x, stock=False)]
-  products.sort(key=lambda p: p.display_order)
-
-  fields = {}
-  for product in products:
-    results = re.match("^([a-zA-Z0-9'_]+)\s+(.*)$", product.description)
-    day = results.group(1).replace('_',' ')
-    accom = results.group(2)
-
-    if day not in fields:
-      fields[day] = []
-    fields[day].append((accom, product))
-  endfor
 %>
+<fieldset id="${ h.computer_title(category.name) }">
+  <h2>${ category.name.title() }</h2>
+  <p class="description">${ category.description |n}</p>
+  <input type="hidden" name="${'products.error.' + category.clean_name()}">
 
-${products}
-
-<table>
-  <tr>
-    %for day in sorted(fields):
-      <th>${ day }</th>
-    %endfor
-  </tr>
-  <tr>
-    %for day in sorted(fields):
-      <td>
-        %for (accom, product) in sorted(fields[day]):
-<div id="${ product.clean_description(True).replace(' ','_') + '_div'}">
-          %if category.display == 'qty':
-            ${ h.text('products.product_' + product.clean_description(True) + '_qty', size=2, disabled=not product.available()) + ' ' + accom}
-          %elif category.display == 'checkbox':
-            ${ h.checkbox('products.product_' + product.clean_description(True) + '_checkbox', label=accom, disabled=not product.available()) }
-          %endif # category.display
-          %if not product.available():
-            <span class="mandatory">SOLD&nbsp;OUT</span>
-          %elif product.cost != 0:
-            - ${ h.integer_to_currency(product.cost) }
-          %endif
-          <br>
-        %endfor
-      </td>
-    %endfor
-  </tr>
-</table>
-
-<script>
-  $('div[id$="double_div"]').hide();
-  $('div[id$="double_breakfast_div"]').hide();
-  $('div[id$="single_breakfast_div"]').hide();
-
-  function accommdisplay() {
-    if (jQuery('input[id="breaky_accomm_option"]').attr('checked')) {
-      jQuery('div[id$="breakfast_div"]').show();
-      jQuery('div[id$="double_div"]').hide();
-      jQuery('div[id$="single_div"]').hide();
-    } else {
-      jQuery('div[id$="breakfast_div"]').hide();
-      jQuery('div[id$="double_div"]').show();
-      jQuery('div[id$="single_div"]').show();
-    }
-    if (jQuery('input[id="double_accomm_option"]').attr('checked')) {
-      jQuery('div[id*="_single_"]').hide();
-    } else {
-      jQuery('div[id*="_double_"]').hide();
-    }
-    jQuery('input[id*="_accommodation_"]').attr('checked', false);
-  }
-
-  $('input[id$="accomm_option"]').change( function() {
-    accommdisplay();
-  });
-</script>
-
-<%include file="accommodation_name_form.mako" args="category=category, products=products" />
+  ## A single free accommodation option is a placeholder -> self organise
+  %if len(category.products) == 0 or (len(category.products) == 1 and category.products[0].cost == 0):
+    <input type="hidden" name="products.category_${ category.clean_name() }">
+    <p class="note">
+      Please see the
+      <a href="/register/accommodation" target="_blank">accommodation page</a>
+      for discounted rates for delegates. You <strong>must</strong> book
+      your accommodation directly through the accommodation providers
+      yourself. Registering for the conference <strong>does not</strong>
+      book your accommodation.
+    </p>
+  %else:
+    <div class="form-group"></div>
+    <p>Please see the <a href="/register/accommodation" target="_blank">accommodation page</a> for prices and details.</p>
+	<script>
+		select = build_select_product_group(${category.id});
+		// Add a dummy first option - force the user to select something
+		// This avoids people turning up assuming accommodation is provided
+		select.prepend("<option>--</option>");
+		jQuery(select.children()[0]).prop('selected', true);
+		// TODO: Set selected based on input data
+		jQuery("#${ h.computer_title(category.name) } div").append(select);
+	</script>
+  %endif
+</fieldset>

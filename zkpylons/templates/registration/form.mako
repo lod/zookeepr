@@ -33,6 +33,10 @@
     return str;
   }
 
+  function cost2nice(cost) {
+    return "$"+parseFloat(cost/100).toFixed(2);
+  }
+
 
   // Functions to build product groups
   function build_radio_product_group(cat_id) {
@@ -40,10 +44,17 @@
     list = jQuery("<ul>");
     cat_products.forEach(function(p){
       input = jQuery("<input type='radio' value='"+p['id']+"' name='products.category_"+product_categories[cat_id]['clean_name']+"' product_category='"+cat_id+"'>")
-      label = jQuery("<label>"+p['description']+" - $"+parseFloat(p['cost']/100).toFixed(2)+"</label>");
+      label = jQuery("<label>"+p['description']+" - "+cost2nice(p['cost'])+"</label>");
       list.append(jQuery("<li>").append(label.prepend(input)));
     });
     return list;
+  }
+
+  function build_select_product_group(cat_id) {
+    cat_products = product_categories[cat_id]['products'].map(function(a){return products[a]});
+    select = jQuery("<select name='"+cat_products['clean_name']+"'>");
+    cat_products.forEach(function(p){select.append('<option value='+p.id+'>'+p['description']+' - '+cost2nice(p['cost'])+'</option>')});
+    return select;
   }
 
   function build_product_group(cat_id) {
@@ -172,8 +183,6 @@
 
 </script>
 
-
-## If no-js include non_js_form.mako
 
 <fieldset>
   <%include file="further_information_form.mako" />
