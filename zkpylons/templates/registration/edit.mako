@@ -17,9 +17,9 @@
   ${ h.form(h.url_for()) }
 
     %if h.request.cookies.get('have_javascript') == "true":
-      <%include file="form.mako" />
+      <%include file="js_form.mako" />
     %else:
-      <%include file="nonjs_form.mako" />
+      <%include file="form.mako" />
     %endif
 
     ${ h.hidden('special_offer.name', '') }

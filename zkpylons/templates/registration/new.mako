@@ -45,9 +45,9 @@ ${ c.special_offer.description | n }
 %endif
 
 %if h.request.cookies.get('have_javascript') == "true":
-  <%include file="form.mako" />
+  <%include file="js_form.mako" />
 %else:
-  <%include file="nonjs_form.mako" />
+  <%include file="form.mako" />
 %endif
 
 %if not c.signed_in_person.i_agree:
