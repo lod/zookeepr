@@ -1,5 +1,4 @@
-<% from zkpylons.model import ProductCategory %>
-<% category = ProductCategory.find_by_name('Ticket') %>
+<%page args="category" />
 <div id="ticket_div"></div>
 <script>
   // Build div contents

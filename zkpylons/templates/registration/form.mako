@@ -6,25 +6,10 @@
   ## TODO: build the cookie fixup page, create an override disable js cookie
 </noscript>
 
-<%
-  from zkpylons.model import ProductCategory, ProductInclude
-  import re
-  available_products = [x for x in c.products if c.product_available(x, stock=False)]
-  simple_products = {p.id:{'id':p.id, 'category':p.category_id, 'display_order':p.display_order, 'active':p.active, 'description':p.description, 'clean_description':p.clean_description(True), 'cost':p.cost} for p in available_products}
-  simple_includes = {i.product_id:{} for i in ProductInclude.find_all()}
-  for i in ProductInclude.find_all():
-    simple_includes[i.product_id][i.include_category_id] = i.include_qty
-    simple_categories = {x.id:{'id':x.id, 'name':x.name, 'idname':h.computer_title(x.name), 'description':x.description, 'clean_name':x.clean_name(), 'display_order':x.display_order, 'invoice_free_products':x.invoice_free_products} for x in c.product_categories}
-  for cat in simple_categories:
-    scategory = ProductCategory.find_by_name(simple_categories[cat]['name'])
-    cat_products = scategory.available_products(c.signed_in_person, stock=False)
-    simple_categories[cat]['products'] = [x.id for x in cat_products if c.product_available(x, stock=False)]
-%>
-
 <script>
-  product_categories = ${h.json.dumps(simple_categories)|n};
-  product_includes = ${h.json.dumps(simple_includes)|n};
-  products = ${h.json.dumps(simple_products)|n};
+  product_categories = ${h.json.dumps(c.js_categories)|n};
+  product_includes = ${h.json.dumps(c.js_includes)|n};
+  products = ${h.json.dumps(c.js_products)|n};
 
   function to_id(str) {
     str = str.toLowerCase();
@@ -227,7 +212,7 @@
     except:
       # No special case template, use default
       tmpl = context.lookup.get_template("/registration/default_js_form.mako")
-    tmpl.render_context(context, category=category, category_id=category.id)
+    tmpl.render_context(context, category=category)
 %>
 
 ## TODO: Create swag section when required, but only once

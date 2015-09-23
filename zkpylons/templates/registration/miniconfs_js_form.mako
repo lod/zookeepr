@@ -1,6 +1,5 @@
+<%page args="category" />
 <%
-  from zkpylons.model import ProductCategory
-  category = ProductCategory.find_by_name('Miniconfs')
   all_products = category.available_products(c.signed_in_person, stock=False)
   products = [x for x in all_products if c.product_available(x, stock=False)]
   products.sort(key=lambda p: p.display_order)

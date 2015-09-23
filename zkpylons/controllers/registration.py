@@ -28,7 +28,7 @@ from zkpylons.lib.mail import email
 
 from zkpylons.model import meta
 from zkpylons.model import Registration, Role, RegistrationProduct, Person
-from zkpylons.model import ProductCategory, Product, Voucher, Ceiling
+from zkpylons.model import ProductCategory, Product, Voucher, Ceiling, ProductInclude
 from zkpylons.model import Invoice, InvoiceItem
 from zkpylons.model.special_offer import SpecialOffer
 from zkpylons.model.special_registration import SpecialRegistration
@@ -354,6 +354,38 @@ class RegistrationController(BaseController):
         c.silly_description, checksum = h.silly_description()
         defaults['registration.silly_description'] = c.silly_description
         defaults['registration.silly_description_checksum'] = checksum
+
+        # Create nice category and product objects suitable for converting to JSON objects
+        available_products = [x for x in c.products if c.product_available(x, stock=False)]
+
+        # Describe each product
+        c.js_products = { p.id : {
+            'id'                : p.id,
+            'category'          : p.category_id,
+            'display_order'     : p.display_order,
+            'active'            : p.active,
+            'description'       : p.description,
+            'clean_description' : p.clean_description(True),
+            'cost'              : p.cost
+        } for p in available_products}
+
+        # Each product can include a number of free items from another category
+        # Create a mapping to express this
+        c.js_includes = {i.product_id:{} for i in ProductInclude.find_all()}
+        for i in ProductInclude.find_all():
+            c.js_includes[i.product_id][i.include_category_id] = i.include_qty
+
+        # Describe each category
+        c.js_categories = { x.id : {
+          'id'                    : x.id,
+          'name'                  : x.name,
+          'idname'                : h.computer_title(x.name),
+          'description'           : x.description,
+          'clean_name'            : x.clean_name(),
+          'display_order'         : x.display_order,
+          'invoice_free_products' : x.invoice_free_products,
+          'products'              : [y.id for y in available_products if y.category == x],
+        } for x in c.product_categories}
 
         form = render("/registration/new.mako")
         return htmlfill.render(form, defaults)

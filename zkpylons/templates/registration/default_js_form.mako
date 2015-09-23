@@ -1,5 +1,5 @@
-<%page args="category_id" />
+<%page args="category" />
 <script>
-  jQuery(function() { add_swag_button(${category_id}) })
+  jQuery(function() { add_swag_button(${category.id}) })
 </script>
 

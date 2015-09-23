@@ -1,7 +1,4 @@
-<%
-  from zkpylons.model import ProductCategory
-  category = ProductCategory.find_by_name('Accommodation')
-%>
+<%page args="category" />
 <fieldset id="${ h.computer_title(category.name) }">
   <h2>${ category.name.title() }</h2>
   <p class="description">${ category.description |n}</p>
