@@ -10,7 +10,7 @@
   from zkpylons.model import ProductCategory, ProductInclude
   import re
   available_products = [x for x in c.products if c.product_available(x, stock=False)]
-  simple_products = {p.id:{'id':p.id, 'category':p.category_id, 'active':p.active, 'description':p.description, 'clean_description':p.clean_description(True), 'cost':p.cost} for p in available_products}
+  simple_products = {p.id:{'id':p.id, 'category':p.category_id, 'display_order':p.display_order, 'active':p.active, 'description':p.description, 'clean_description':p.clean_description(True), 'cost':p.cost} for p in available_products}
   simple_includes = {i.product_id:{} for i in ProductInclude.find_all()}
   for i in ProductInclude.find_all():
     simple_includes[i.product_id][i.include_category_id] = i.include_qty
@@ -43,7 +43,7 @@
     cat_products = product_categories[cat_id]['products'].map(function(a){return products[a]});
     list = jQuery("<ul>");
     cat_products.forEach(function(p){
-      input = jQuery("<input type='radio' value='"+p['id']+"' name='products.category_"+product_categories[cat_id]['clean_name']+"' product_category='"+cat_id+"'>")
+      input = jQuery("<input type='radio' value='"+p['id']+"' name='products.category_"+product_categories[cat_id]['clean_name']+"' category_id='"+cat_id+"'>")
       label = jQuery("<label>"+p['description']+" - "+cost2nice(p['cost'])+"</label>");
       list.append(jQuery("<li>").append(label.prepend(input)));
     });
@@ -51,9 +51,10 @@
   }
 
   function build_select_product_group(cat_id) {
+    category = product_categories[cat_id];
     cat_products = product_categories[cat_id]['products'].map(function(a){return products[a]});
-    select = jQuery("<select name='"+cat_products['clean_name']+"'>");
-    cat_products.forEach(function(p){select.append('<option value='+p.id+'>'+p['description']+' - '+cost2nice(p['cost'])+'</option>')});
+    select = jQuery("<select category_id='"+cat_id+"' name='"+category['clean_name']+"'>");
+    cat_products.forEach(function(p){select.append('<option product_id="'+p.id+'" category_id="'+cat_id+'" value="'+p.id+'">'+p['description']+' - '+cost2nice(p['cost'])+'</option>')});
     return select;
   }
 
@@ -68,9 +69,11 @@
 
   // Functions to manage the swag list
   function load_product_group(category, target) {
-    cat_products = product_categories[category]['products'].map(function(a){return products[a]});
-    select = jQuery("<select>");
-    cat_products.forEach(function(p){select.append('<option>'+p['description']+'</option>')});
+    //cat_products = product_categories[category]['products'].map(function(a){return products[a]});
+    //select = jQuery("<select>");
+    //cat_products.forEach(function(p){select.append('<option>'+p['description']+'</option>')});
+    // TODO: provided product groups shouldn't have a price attached
+    select = build_select_product_group(category);
     jQuery(target).append("<div class='form-group'><label>"+product_categories[category]['name']+"</label>"+select[0].outerHTML+"</div>");
   }
 
@@ -91,9 +94,10 @@
         jQuery("#additional_swag_list").append("<h3>Purchased</h3>");
       }
       cat_id = jQuery(this).attr('category_id');
-      // TODO: Add price onto the display
       load_product_group(cat_id, jQuery("#additional_swag_list"));
-      // TODO: Add to price summary
+
+      // TODO: Each swag item needs a different price row
+      jQuery("#additional_swag_list .form-group").last().on("change", update_select_price);
     });
 
     jQuery("#additional_swag_buttons").append(button);
@@ -101,7 +105,6 @@
 
 
   // Functions to manage the price summary
-  // TODO: Should sort the list, by cat display order then product display order
   function update_price_total() {
     // Tally up the last column
     total = 0;
@@ -109,6 +112,31 @@
       function(undef,cell){total += parseFloat(cell.textContent)}
     );
     jQuery("#price_total").text(parseFloat(total).toFixed(2));
+  }
+
+  function sort_table_comparator(a_in,b_in) {
+    var a = jQuery(a_in); var b = jQuery(b_in);
+
+    // Sort by category display order, then product display order
+    var ca = product_categories[a.attr("category_id")].display_order;
+    var cb = product_categories[b.attr("category_id")].display_order;
+    if (ca > cb) return 1;
+    if (ca < cb) return -1;
+
+    // Same category - sort by product
+    var pa = products[a.attr("product_id")].display_order;
+    var pb = products[b.attr("product_id")].display_order;
+    if (pa > pb) return 1;
+    if (pa < pb) return -1;
+
+    // Identical item
+    return 0;
+  }
+
+  function sort_price_table() {
+    var table = jQuery("#price_tally tbody tr");
+    var rows = table.toArray().sort(sort_table_comparator);
+    for (var i = 0; i < rows.length; i++) jQuery("#price_tally tbody").append(rows[i]);
   }
 
   function update_price_row(product_id, description, price, qty) {
@@ -119,7 +147,8 @@
     }
 
     if(qty > 0) {
-      row = jQuery("<tr id='price_"+product_id+"'>");
+      product = products[product_id];
+      row = jQuery("<tr product_id='"+product_id+"' category_id='"+product.category+"' id='price_"+product_id+"'>");
       row.append("<td>"+description+"</td>");
       row.append("<td>"+qty+"</td>");
       row.append("<td>"+parseFloat(price/100).toFixed(2)+"</td>");
@@ -127,6 +156,7 @@
       jQuery("#price_tally tbody").append(row);
     }
 
+    sort_price_table();
     update_price_total();
   }
 
@@ -161,6 +191,21 @@
     }
   }
 
+  function update_select_price() {
+    var category_id = jQuery(this).attr("category_id");
+    var product_id = jQuery(this).find(":selected").attr("product_id");
+    if (product_id === undefined) {
+      // No product_id means it is a dummy entry - clear the inventory (0 qty)
+      update_price_row("C"+category_id, "", 0, 0);
+    } else {
+      var product = products[product_id];
+      var category = product_categories[product['category']];
+      if (product.cost != 0 || category['invoice_free_products']) {
+        update_price_row("C"+category_id, category.name+" - "+product.description, product.cost, 1);
+      }
+    }
+  }
+
 </script>
 
 
@@ -178,13 +223,14 @@
   # Display each product group
   for category in c.product_categories: # Ordered by display order
     try:
-      tmpl = app_globals.mako_lookup.get_template("/registration/"+h.computer_title(category.name)+"_js_form.mako")
+      tmpl = context.lookup.get_template("/registration/"+h.computer_title(category.name)+"_js_form.mako")
     except:
-      context.write("NOT FOUND: "+h.computer_title(category.name)+"_js_form.mako"); # TODO: Handle new product groups
-    else:
-      tmpl.render_context(context)
+      # No special case template, use default
+      tmpl = context.lookup.get_template("/registration/default_js_form.mako")
+    tmpl.render_context(context, category=category, category_id=category.id)
 %>
 
+## TODO: Create swag section when required, but only once
 <fieldset class="form-horizontal">
   <h2>Swag</h3>
   <div id="ticket_swag_list"></div>
