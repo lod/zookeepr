@@ -44,21 +44,38 @@ function build_product_group(cat_id) {
 
 
 // Functions to manage the swag list
-function load_product_group(category, target) {
+function load_product_group(category_id, target) {
   //cat_products = product_categories[category]['products'].map(function(a){return products[a]});
   //select = jQuery("<select>");
   //cat_products.forEach(function(p){select.append('<option>'+p['description']+'</option>')});
   // TODO: provided product groups shouldn't have a price attached
-  select = build_select_product_group(category);
-  jQuery(target).append("<div class='form-group'><label>"+product_categories[category]['name']+"</label>"+select[0].outerHTML+"</div>");
+  select = build_select_product_group(category_id);
+  jQuery(target).append("<div class='form-group'><label>"+product_categories[category_id]['name']+"</label>"+select[0].outerHTML+"</div>");
 }
 
-function load_included_swag(product, target) {
-  for (var category in product_includes[product]) {
-    for (var i = 0; i < product_includes[product][category]; i++) {
-      load_product_group(category, target);
+// TODO: Would be nice to hide swag group when there are no entries - or state there are no entries
+function init_swag_group(category) {
+  group_id = "included_"+category.idname+"_swag_list";
+  group = jQuery("<div id='"+group_id+"'></div>");
+  group.append("<h3>Provided as part of "+category.name+"</h3>");
+
+  // Check if the group already exists, then insert/replace
+  if (jQuery("#"+group_id).length == 0) {
+    // TODO: Order the entries by display order
+    jQuery("#included_swag_lists").append(group);
+  } else {
+    jQuery("#"+group_id).replaceWith(group);
+  }
+  return group;
+}
+
+function load_included_swag(product_id, target) {
+  for (var category_id in product_includes[product_id]) {
+    for (var i = 0; i < product_includes[product_id][category_id]; i++) {
+      load_product_group(category_id, target);
     }
   }
+  jQuery("#swag_section").show();
 }
 
 function add_swag_button(category_id) {
@@ -77,6 +94,7 @@ function add_swag_button(category_id) {
   });
 
   jQuery("#additional_swag_buttons").append(button);
+  jQuery("#swag_section").show();
 }
 
 

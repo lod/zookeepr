@@ -32,11 +32,10 @@
     tmpl.render_context(context, category=category)
 %>
 
-## TODO: Create swag section when required, but only once
-<fieldset class="form-horizontal">
+<!-- Swag section is shown when we have some possible swag, not before -->
+<fieldset id="swag_section" style="display:none" class="form-horizontal">
   <h2>Swag</h3>
-  <div id="ticket_swag_list"></div>
-  <div id="partner_swag_list"></div>
+  <div id="included_swag_lists"></div>
   <div id="additional_swag_list"></div>
   <div id="additional_swag_buttons"></div>
 </fieldset>

@@ -34,13 +34,12 @@
   })
 
   function update_partner_program() {
-    jQuery("#partner_swag_list").empty();
-    jQuery("#partner_swag_list").append("<h3>Provided as part of "+product_categories[${category.id}]['name']+"</h3>");
+    group = init_swag_group(product_categories[${category.id}]);
 
-    product_categories[${category.id}]['products'].forEach(function(product){
-      val = jQuery("#"+to_id("products.product_"+products[product]['clean_description']+'_qty')).val()
+    product_categories[${category.id}]['products'].forEach(function(product_id){
+      val = jQuery("#"+to_id("products.product_"+products[product_id]['clean_description']+'_qty')).val()
       for(var i=0; i < val; i++) {
-        load_included_swag(product, jQuery("#partner_swag_list"));
+        load_included_swag(product_id, group);
       }
     });
   }
