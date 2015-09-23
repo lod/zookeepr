@@ -1,3 +1,5 @@
+<%namespace name="form" file="form_tags.mako" />
+
 <h2>Further Information</h2>
 
 <div class="form-group">
@@ -11,16 +13,12 @@
   <p>Being under 18 will not stop you from registering. We need to know whether you are over 18 to allow us to cater for you at venues that serve alcohol.</p>
 </div>
 
-<div class="form-group">
-  <label for="registrationdiet">Dietary requirements:</label>
-  ${ h.text('registration.diet', size=60) }
-</div>
+<%form:text name="registration.diet" label="Dietary requirements" />
 
-<div class="form-group">
-  <label for="registrationspecial">Other special requirements:</label>
-  ${ h.text('registration.special', size=60) }
+<%form:text name="registration.special" label="Other special requirements" >
   Please enter any requirements if necessary; access requirements, etc.
-</div>
+</%form:text>
+
 %if c.config.get('ask_past_confs', category='rego'):
   <label>Have you attended ${ c.config.get('event_generic_name') } before?</label>
   <table>

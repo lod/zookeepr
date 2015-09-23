@@ -16,9 +16,11 @@
 
   ${ h.form(h.url_for()) }
 
+    ## TODO: Editing hasn't been tested
     %if h.request.cookies.get('have_javascript') == "true":
       <%include file="js_form.mako" />
     %else:
+      ## TODO: Non-JS form hasn't been tested much
       <%include file="form.mako" />
     %endif
 

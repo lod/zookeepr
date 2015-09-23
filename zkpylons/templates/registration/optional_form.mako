@@ -1,5 +1,49 @@
+<%namespace name="form" file="form_tags.mako" />
+
+<%def name="extended_option(name, options, **attrs)">
+  <%doc>
+    Render a list of options with an other category for manual entry.
+  </%doc>
+  <%
+    # Name must not contain any whitespace characters
+    name.replace(" ", "")
+
+    # Build a list of html attributes from the passed hash
+    attr_list = " ".join([k+'="'+attrs[k]+'"' for k in attrs if type(attrs[k]) == "str"])
+
+    # Set the id to match the name - unless it is passed
+    # HTML4 states that id must start with A-Z
+    # Then contain only A-Z, 0-9, "-", "_", ":" and "."
+    # HTML5 states than anything non-whitespace is fine, works IE6+
+    id = attrs.get("id", name)
+  %>
+  <div class="form-group">
+    <select id="${id}" name="${name}" onchange="toggle_select_hidden(this.id, 'shell_other')">
+      <option value="">(please select)</option>
+      %for s in options:
+        <option value="${s}">${ s }</option>
+      %endfor
+      <option value="other">other</option>
+    </select>
+  </div>
+
+  %if not c.registration or c.registration.shell in options or c.registration.shell == '':
+    <p class="entries" style="display: none">
+  %else:
+    <p class="entries" style="display: inline">
+  %endif
+      ${ h.text('${name}.text', size=12) }
+    </p>
+  <script>
+    // jQuery selector struggles with . characters, they need to be escaped
+    jQuery(document.getElementById("${id}")).on("change", function() {
+      jQuery(this).parents("td").children("p").toggle(this.value == "other");
+    });
+  </script>
+
+</%def>
+
 <h2>Optional</h2>
-<script src="/silly.js"></script>
 <table>
   <tr>
     <th>Your favourite shell</th>
@@ -9,111 +53,37 @@
   </tr>
   <tr>
     <td>
-      <div class="form-group">
-        <select id="registration.shell" name="registration.shell" onchange="toggle_select_hidden(this.id, 'shell_other')">
-          <option value="">(please select)</option>
-          %for s in c.config.get('shells', category='rego'):
-            <option value="${s}">${ s }</option>
-          %endfor
-          <option value="other">other</option>
-        </select>
-      </div>
-
-      %if not c.registration or c.registration.shell in c.config.get('shells', category='rego') or c.registration.shell == '':
-        <p id="shell_other" class="entries" style="display: none">
-      %else:
-        <p id="shell_other" class="entries" style="display: inline">
-      %endif
-          ${ h.text('registration.shelltext', size=12) }
-        </p>
+      <%self:extended_option name="registration.shell", options="${c.config.get('shells', category='rego')}" />
     </td>
-
     <td>
-      <div class="form-group">
-        <select id="registration.editor" name="registration.editor" onchange="toggle_select_hidden(this.id, 'editor_other')">
-          <option value="">(please select)</option>
-          %for e in c.config.get('editors', category='rego'):
-            <option value="${ e }">${ e }</option>
-          %endfor
-          <option value="other">other</option>
-        </select>
-      </div>
-
-      % if not c.registration or c.registration.editor in c.config.get('editors', category='rego') or c.registration.editor == '':
-        <p id="editor_other" class="entries" style="display: none">
-      % else:
-        <p id="editor_other" class="entries" style="display: inline">
-      % endif
-          ${ h.text('registration.editortext', size=12) }
-        </p>
+      <%self:extended_option name="registration.editor", options="${c.config.get('editors', category='rego')}" />
     </td>
-
     <td>
-      <div class="form-group">
-        <select id="registration.distro" name="registration.distro" onchange="toggle_select_hidden(this.id, 'distro_other')">
-          <option value="">(please select)</option>
-          %for d in c.config.get('distros', category='rego'):
-            <option value="${ d }">${ d }</option>
-          %endfor
-          <option value="other">other</option>
-        </select>
-      </div>
-
-      %if not c.registration or c.registration.distro in c.config.get('distros', category='rego') or c.registration.distro == '':
-        <p id="distro_other" class="entries" style="display: none">
-      %else:
-        <p id="distro_other" class="entries" style="display: inline">
-      %endif
-          ${ h.text('registration.distrotext', size=12) }
-        </p>
+      <%self:extended_option name="registration.distro", options="${c.config.get('distros', category='rego')}" />
     </td>
-
     <td>
-      <div class="form-group">
-        <select id="registration.vcs" name="registration.vcs" onchange="toggle_select_hidden(this.id, 'vcs_other')">
-          <option value="">(please select)</option>
-          %for s in c.config.get('vcses', category='rego'):
-            <option value="${s}">${ s }</option>
-          %endfor
-          <option value="other">other</option>
-        </select>
-      </div>
-
-      %if not c.registration or c.registration.vcs in c.config.get('vcses', category='rego') or c.registration.vcs == '':
-        <p id="vcs_other" class="entries" style="display: none">
-      %else:
-        <p id="vcs_other" class="entries" style="display: inline">
-      %endif
-          ${ h.text('registration.vcstext', size=12) }
-        </p>
+      <%self:extended_option name="registration.vcs", options="${c.config.get('vcses', category='rego')}" />
     </td>
   </tr>
 </table>
 
-<div class="form-group">
-  <label for="registrationnick">Superhero name:</label>
-  ${ h.text('registration.nick', size=30) }
+<%form:text name="registration.nick" label="Superhero Name">
   Your IRC nick or other handle you go by.
-</div>
+</%form:text>
 
 %if c.config.get('pgp_collection', category='rego') != 'no':
-  <div class="form-group">
-    <label for="registrationkeyid">GnuPG/PGP Keyid:</label>
-    ${ h.text('registration.keyid', size=10) }
+  <%form:text name="registration.keyid" label="GnuPG/PGP Keyid">
     If you have a GnuPG or PGP key then please enter its short key id here and we will print it on your badge.
-  </div>
+  </%form:text>
 %endif
 
-<div class="form-group">
-  <label for="registrationplanetfeed">Planet Feed:</label>
-  ${ h.text('registration.planetfeed', size=50) }
+<%form:text name="registration.planetfeed" label="Planet Feed">
   If you have a blog and would like it included in the ${ c.config.get('event_name') } planet, please specify an <b>${ c.config.get('event_name') } specific feed</b> to be included. (This is the URL of the RSS feed.)
-</div>
+</%form:text>
 
-<div class="form-group">
-  <label>Description:</label>
+<%form:constant label="Description">
   <blockquote class="entries">${ c.silly_description }</blockquote>
   ${ h.hidden('registration.silly_description') }
   ${ h.hidden('registration.silly_description_checksum') }
   This is a randomly chosen description for your name badge
-</div>
+</%form:constant>

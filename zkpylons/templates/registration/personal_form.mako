@@ -1,54 +1,25 @@
+<%namespace name="form" file="form_tags.mako" />
+
 <h2>Personal Information</h2>
 
 <p class="note">
   <span class="mandatory">*</span> - Mandatory field
 </p>
 
-<div class="form-group">
-  <label>Name:</label>
-  % if c.registration and c.registration.person:
-    ${ c.registration.person.fullname }
-  % else:
-    ${ c.signed_in_person.fullname }
-  % endif
-</div>
-
-<div class="form-group">
-  <label>Email address:</label>
-  % if c.registration and c.registration.person:
-    ${ c.registration.person.email_address }
-  % else:
-    ${ c.signed_in_person.email_address }
-  % endif
-</div>
+% if c.registration and c.registration.person:
+  <%form:constant label="Name">${ c.registration.person.fullname }</%form:constant>
+  <%form:constant label="Email address">${ c.registration.person.email_address }</%form:constant>
+% else:
+  <%form:constant label="Name">${ c.signed_in_person.fullname }</%form:constant>
+  <%form:constant label="Email address">${ c.signed_in_person.email_address }</%form:constant>
+% endif
 
 %if c.config.get('personal_info', category='rego')['home_address'] == 'yes':
-  <div class="form-group">
-    <span class="mandatory">*</span>
-    <label for="personaddress1">Address:</label>
-      ${ h.text('person.address1', size=40) }
-  </div>
-  <div class="form-group">
-    <label>&nbsp;</label>
-    ${ h.text('person.address2', size=40) }
-  </div>
-
-  <div class="form-group">
-    <span class="mandatory">*</span>
-    <label for="personcity">City/Suburb:</label>
-    ${ h.text('person.city', size=40) }
-  </div>
-
-  <div class="form-group">
-    <label for="personstate">State/Province:</label>
-    ${ h.text('person.state', size=40) }
-  </div>
-
-  <div class="form-group">
-    <span class="mandatory">*</span>
-    <label for="personpostcode">Postcode/ZIP:</label>
-    ${ h.text('person.postcode', size=40) }
-  </div>
+  <%form:text name="person.address1" label="Address" mandatory="true" />
+  <%form:text name="person.address2" label="&nbsp;" />
+  <%form:text name="person.city" label="City/Suburb" mandatory="true" />
+  <%form:text name="person.state" label="State/Province" />
+  <%form:text name="person.postcode" label="Postcode/ZIP" mandatory="true" />
 %else:
   ${ h.hidden('person.address1') }
   ${ h.hidden('person.address2') }
@@ -68,24 +39,11 @@
 </div>
 
 %if c.config.get('personal_info', category='rego')['phone'] == 'yes':
-  <div class="form-group">
-    <label for="personphone">Phone number (International Format):</label>
-    ${ h.text('person.phone') }
-  </div>
-
-  <div class="form-group">
-    % if is_speaker:
-      <span class="mandatory">*</span>
-    % endif
-    <label for="personmobile">Mobile/Cell number (International Format):</label>
-    ${ h.text('person.mobile') }
-  </div>
+  <%form:text name="person.phone" label="Phone number (International Format)" />
+  <%form:text name="person.mobile" label="Mobile/Cell number (International Format)" mandatory="${c.signed_in_person.is_speaker()}" />
 %else:
   ${ h.hidden('person.phone') }
   ${ h.hidden('person.mobile') }
 %endif
 
-<div class="form-group">
-  <label for="personcompany">Company:</label>
-  ${ h.text('person.company', size=60) }
-</div>
+<%form:text name="person.company" label="Company" />
