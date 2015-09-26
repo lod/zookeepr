@@ -19,7 +19,7 @@ function build_radio_product_group(cat_id) {
   cat_products = product_categories[cat_id].product_ids.map(function(a){return products[a]});
   list = jQuery("<ul>");
   cat_products.forEach(function(p){
-    input = jQuery("<input type='radio' value='"+p.id+"' name='products.category_"+product_categories[cat_id].clean_name+"' category_id='"+cat_id+"'>")
+    input = jQuery("<input id='"+p.full_idname+"' type='radio' value='"+p.id+"' name='products.category_"+product_categories[cat_id].clean_name+"' category_id='"+cat_id+"'>")
     label = jQuery("<label>"+p.description+" - "+cost2nice(p.cost)+"</label>");
     list.append(jQuery("<li>").append(label.prepend(input)));
   });
