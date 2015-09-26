@@ -13,9 +13,11 @@
     id = attrs.get("id", name)
 
     # Build a list of html attributes from the passed hash
+	## TODO: Need to strip id out of attrs
     attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
   %>\
   <div class="form-group">
+	## Should use the html required attribute
     %if attrs.get("mandatory", false):
       <span class="mandatory">*</span>
     %endif
@@ -46,7 +48,7 @@
     id = attrs.get("id", name)
 
     # Build a list of html attributes from the passed hash
-    attr_list = " ".join([k+'="'+attrs[k]+'"' for k in attrs if type(attrs[k]) == "str"])
+    attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
 
     # Checked is handled specially, controlled by presence not value
     if checked:
@@ -75,7 +77,7 @@
     id = attrs.get("id", name)
 
     # Build a list of html attributes from the passed hash
-    attr_list = " ".join([k+'="'+attrs[k]+'"' for k in attrs if type(attrs[k]) == "str"])
+    attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
 
     # Checked is handled specially, controlled by presence not value
     if checked:

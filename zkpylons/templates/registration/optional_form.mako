@@ -28,7 +28,7 @@
 
     ## TODO: Do we want to show the other text box when no-JS? This will require it to always be visible for them.
     <p class="entries" style="display: none">
-      ${ h.text('${name}.text', size=12) }
+      ${ h.text(name+'.text', id=name+'.text', size=12) }
     </p>
   </div>
   <script>

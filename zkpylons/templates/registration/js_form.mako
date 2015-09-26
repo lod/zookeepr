@@ -33,6 +33,7 @@
 %>
 
 <!-- Swag section is shown when we have some possible swag, not before -->
+<!-- TODO: swag should be inserted at the location of the first use, as per display order -->
 <fieldset id="swag_section" style="display:none" class="form-horizontal">
   <h2>Swag</h3>
   <div id="included_swag_lists"></div>

@@ -9,7 +9,7 @@
 <ul class="entries">
   %for product in products:
     <li>
-      <%form:radio name="products.${category.clean_name()}" value="${product.id}" />
+      <%form:radio name="products.${category.clean_name()}" value="${product.id}" product_id="${product.id}" />
         ${ product.description } - ${ h.integer_to_currency(product.cost) }
       </%form:radio>
       %if product.description.lower().find('student') > -1:
