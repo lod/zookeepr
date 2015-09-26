@@ -1,10 +1,7 @@
 <%page args="category,products" />
+<%namespace name="form" file="form_tags.mako" />
 
-<fieldset id="${ h.computer_title(category.name) }">
-  <h2>${ category.name.title() } </h2>
-  <p class="description">${ category.description |n}</p>
-  <input type="hidden" name="${'products.error.' + category.clean_name()}">
-
+<%form:fieldset category="${category}">
   <div id="partner_selector">
     Will your partner be attending the Partners Program?
     <label class="radio-inline">
@@ -19,7 +16,7 @@
     <%include file="grid_form.mako" args="category=category, products=products" />
     <%include file="partners_programme_extra_form.mako" />
   </div>
-</fieldset>
+</%form:fieldset>
 
 <script>
   var partner_category = product_categories[${category.id}];
@@ -27,8 +24,11 @@
 
   jQuery('input[name="partner_visibility"]:radio').change(function(){
     jQuery("#partner_details").toggle(Boolean(jQuery(this).val()));
-    if (Boolean(jQuery(this).val()))
+    if (Boolean(jQuery(this).val())) {
       jQuery('#products\\.partners_programme\\.adult').val(1)
+      update_partner_swag();
+      jQuery(partner_inputs).each(update_text_price);
+    }
   })
 
   function update_partner_swag() {

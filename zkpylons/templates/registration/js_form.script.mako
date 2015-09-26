@@ -133,16 +133,15 @@ function sort_price_table() {
   for (var i = 0; i < rows.length; i++) jQuery("#price_tally tbody").append(rows[i]);
 }
 
-function update_price_row(product_id, description, price, qty) {
+function update_price_row(row_id, product_id, category_id, description, price, qty) {
   // Update a row if it exists, otherwise create it, delete rows with qty = 0
-  if(jQuery("#price_"+product_id).length > 0) {
+  if(jQuery("#price_"+row_id).length > 0) {
     // if exists, delete it
-    jQuery("#price_"+product_id).remove()
+    jQuery("#price_"+row_id).remove()
   }
 
   if(qty > 0) {
-    product = products[product_id];
-	row = jQuery("<tr product_id='"+product_id+"' category_id='"+product.category_id+"' id='price_"+product_id+"'>");
+    row = jQuery("<tr product_id='"+product_id+"' category_id='"+category_id+"' id='price_"+row_id+"'>");
     row.append("<td>"+description+"</td>");
     row.append("<td>"+qty+"</td>");
     row.append("<td>"+parseFloat(price/100).toFixed(2)+"</td>");
@@ -159,7 +158,7 @@ function update_text_price() {
   var product = products[id];
   var category = product_categories[product.category_id];
   if (product.cost != 0 || category.invoice_free_products) {
-    update_price_row(id, category.name+" - "+product.description, product.cost, jQuery(this).val());
+    update_price_row(id, id, category.id, category.name+" - "+product.description, product.cost, jQuery(this).val());
   }
 }
 
@@ -171,7 +170,7 @@ function update_radio_price() {
   // This requires deletion, in case we previously had a visible option
   // Easiest way to do this is with a quantity of zero to trigger it
   var qty = product.cost != 0 || product_categories[cat_id]['invoice_free_products'] ? 1 : 0;
-  update_price_row("C"+cat_id, product.description, product.cost, qty);
+  update_price_row("C"+cat_id, "", cat_id, product.description, product.cost, qty);
 }
 
 function update_checkbox_price() {
@@ -181,7 +180,7 @@ function update_checkbox_price() {
   var qty = jQuery(this).attr('checked') ? 1 : 0
 
   if (product.cost != 0 || category.invoice_free_products) {
-    update_price_row(product_id, category.name+" - "+product.description, product.cost, qty);
+    update_price_row(product_id, product_id, category.id, category.name+" - "+product.description, product.cost, qty);
   }
 }
 
@@ -190,12 +189,12 @@ function update_select_price() {
   var product_id = jQuery(this).find(":selected").attr("product_id");
   if (product_id === undefined) {
     // No product_id means it is a dummy entry - clear the inventory (0 qty)
-    update_price_row("C"+category_id, "", 0, 0);
+    update_price_row("C"+category_id, "", category_id, "", 0, 0);
   } else {
     var product = products[product_id];
 	var category = product_categories[product.category_id];
     if (product.cost != 0 || category.invoice_free_products) {
-      update_price_row("C"+category_id, category.name+" - "+product.description, product.cost, 1);
+      update_price_row("C"+category_id, "", category_id, category.name+" - "+product.description, product.cost, 1);
     }
   }
 }

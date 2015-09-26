@@ -22,13 +22,12 @@
       <td><ul class="nomarker">
         %for (miniconf, product) in sorted(fields[day]):
           <%
-            name = ".".join(["products", c.js_categories[category.id]["idname"], c.js_products[product.id]["idname"]])
             label = miniconf + (" - " + h.integer_to_currency(product.cost) if product.cost != 0 else "")
           %>
           %if category.display == 'qty':
-            <li><%form:text name="${name}" label="${label}" product_id="${product.id}" size="2"/></li>
+            <li><%form:text name="${product.full_idname}" label="${label}" product_id="${product.id}" size="2"/></li>
           %elif category.display == 'checkbox':
-            <li><%form:checkbox name="${name}" label="${label}" product_id="${product.id}"/></li>
+            <li><%form:checkbox name="${product.full_idname}" label="${label}" product_id="${product.id}"/></li>
           %endif
         %endfor
       </ul></td>

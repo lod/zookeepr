@@ -23,13 +23,14 @@
 
 <%
   # Display each product group
-  for category in c.product_categories: # Ordered by display order
+  for category in sorted(c.js_categories.values(), key=lambda cat: cat.display_order):
     try:
-      tmpl = context.lookup.get_template("/registration/"+h.computer_title(category.name)+"_js_form.mako")
+      tmpl = context.lookup.get_template("/registration/"+category.idname+"_js_form.mako")
     except:
       # No special case template, use default
       tmpl = context.lookup.get_template("/registration/default_js_form.mako")
-    tmpl.render_context(context,category=category,products=category.valid_products)
+    products = sorted([c.js_products[x] for x in category.product_ids], key=lambda p:p.display_order)
+    tmpl.render_context(context,category=category,products=products)
 %>
 
 <!-- Swag section is shown when we have some possible swag, not before -->

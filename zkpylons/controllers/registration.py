@@ -36,6 +36,8 @@ from zkpylons.model.config import Config
 
 from zkpylons.controllers.person import PersonSchema
 
+from collections import namedtuple
+
 log = logging.getLogger(__name__)
 
 import datetime
@@ -368,15 +370,17 @@ class RegistrationController(BaseController):
         available_products = [x for x in c.products if c.product_available(x, stock=False)]
 
         # Describe each product
-        c.js_products = { p.id : {
-            'id'                : p.id,
-            'category_id'       : p.category_id,
-            'display_order'     : p.display_order,
-            'active'            : p.active,
-            'description'       : p.description,
-            'idname'            : h.computer_title(p.description),
-            'cost'              : p.cost
-        } for p in available_products}
+        SimpleProduct = namedtuple('SimpleProduct', ['id', 'category_id', 'display_order', 'active', 'description', 'idname', 'full_idname', 'cost'])
+        c.js_products = { p.id : SimpleProduct(
+            id                = p.id,
+            category_id       = p.category_id,
+            display_order     = p.display_order,
+            active            = p.active,
+            description       = p.description,
+            idname            = h.computer_title(p.description),
+            full_idname       = ".".join(["products", h.computer_title(p.category.name), h.computer_title(p.description)]),
+            cost              = p.cost
+        ) for p in available_products}
 
         # Each product can include a number of free items from another category
         # Create a mapping to express this
@@ -384,17 +388,21 @@ class RegistrationController(BaseController):
         for i in ProductInclude.find_all():
             c.js_includes[i.product_id][i.include_category_id] = i.include_qty
 
+        SimpleCategory = namedtuple('SimpleCategory', ['id', 'name', 'idname', 'description', 'note', 'clean_name', 'display_order', 'invoice_free_products', 'product_ids', 'display'])
+
         # Describe each category
-        c.js_categories = { x.id : {
-          'id'                    : x.id,
-          'name'                  : x.name,
-          'idname'                : h.computer_title(x.name),
-          'description'           : x.description,
-          'clean_name'            : x.clean_name(),
-          'display_order'         : x.display_order,
-          'invoice_free_products' : x.invoice_free_products,
-          'product_ids'           : [y.id for y in available_products if y.category == x],
-        } for x in c.product_categories}
+        c.js_categories = { x.id : SimpleCategory(
+          id                    = x.id,
+          name                  = x.name,
+          idname                = h.computer_title(x.name),
+          description           = x.description,
+          note                  = x.note,
+          clean_name            = x.clean_name(),
+          display_order         = x.display_order,
+          invoice_free_products = x.invoice_free_products,
+          product_ids           = [y.id for y in available_products if y.category == x],
+          display               = x.display,
+        ) for x in c.product_categories}
 
         form = render("/registration/new.mako")
         return htmlfill.render(form, defaults)

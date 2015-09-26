@@ -1,4 +1,22 @@
 <%! import types %>
+<%def name="fieldset(category)">\
+  <%doc>
+    Render a form fieldset with heading, should be used to wrap a group of entries
+  </%doc>\
+    <fieldset id="${ category.idname }">
+      <h2>${ category.name.title() }</h2>
+      ## Some description content include html such as links
+      ## Safe - can only be set by admins
+      <p class="description">${ category.description |n}</p>
+      <input type="hidden" name="${'products.error.' + category.idname}">
+      ${ caller.body() }
+      %if category.note:
+        ## Some notes also include html such as links - safe same as description
+        <p class="note">${ category.note | n }</p>
+      %endif
+    </fieldset>
+</%def>
+
 <%def name="text(name, label='', **attrs)">\
   <%doc>
     Render a text input in a form-group container.
@@ -13,11 +31,11 @@
     id = attrs.get("id", name)
 
     # Build a list of html attributes from the passed hash
-	## TODO: Need to strip id out of attrs
+    ## TODO: Need to strip id out of attrs
     attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
   %>\
   <div class="form-group">
-	## Should use the html required attribute
+    ## Should use the html required attribute
     %if attrs.get("mandatory", false):
       <span class="mandatory">*</span>
     %endif
