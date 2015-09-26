@@ -1,9 +1,4 @@
-<%page args="category" />
-<%
-  all_products = category.available_products(c.signed_in_person, stock=False)
-  products = [x for x in all_products if c.product_available(x, stock=False)]
-  products.sort(key=lambda p: p.display_order)
-%>
+<%page args="category,products" />
 
 <fieldset id="${ h.computer_title(category.name) }">
   <h2>${ category.name.title() } </h2>
@@ -27,43 +22,45 @@
 </fieldset>
 
 <script>
+  var partner_category = product_categories[${category.id}];
+  var partner_inputs = "#partner_details input[type=text][name^='products."+partner_category['idname']+".']";
+
   jQuery('input[name="partner_visibility"]:radio').change(function(){
     jQuery("#partner_details").toggle(Boolean(jQuery(this).val()));
     if (Boolean(jQuery(this).val()))
-      jQuery('#partner_details input[name="products.product_Partners Programme_Adult_qty"]').val(1)
+      jQuery('#products\\.partners_programme\\.adult').val(1)
   })
 
-  function update_partner_program() {
-    group = init_swag_group(product_categories[${category.id}]);
+  function update_partner_swag() {
+    // Update full group, allows clear and re-add to ensure the correct values
+    // TODO: Clear and re-add removes all preset sizing information - also impacts ticket freebies
+    var group = init_swag_group(partner_category);
 
-    product_categories[${category.id}]['products'].forEach(function(product_id){
-      val = jQuery("#"+to_id("products.product_"+products[product_id]['clean_description']+'_qty')).val()
-      for(var i=0; i < val; i++) {
+    jQuery(partner_inputs).each(function(){
+      var product_id = jQuery(this).attr("product_id");
+      for(var i=0; i < this.value; i++) {
         load_included_swag(product_id, group);
       }
     });
   }
 
-  product_categories[${category.id}]['products'].forEach(function(product){
-    jQuery("#"+to_id("products.product_"+products[product]['clean_description']+'_qty')).change(update_partner_program);
-  });
-
-  jQuery("#partner_details input[type=text][name^='products.product_']").on('change', update_text_price);
+  jQuery(partner_inputs).on('change', update_partner_swag);
+  jQuery(partner_inputs).on('change', update_text_price);
 
   // Set state based on incoming data
   jQuery("#partner_details").hide();
   jQuery('#partners_programme input[value=""]:radio').prop('checked', true);
-  jQuery("#partner_details input[type=text][name^='products.product_']").each(function(){
+  jQuery(partner_inputs).each(function(){
     if (parseInt(jQuery(this).val()) > 0) {
       jQuery('input[name="partner_visibility"][value=true]:radio').attr('checked', true);
       jQuery("#partner_details").show()
     }
   });
 
-  // Update swag and price lists based on initial values
+  // Update swag and price lists based on initial values - after they are loaded
   jQuery(function(){
-    update_partner_program()
-    jQuery("#partner_details input[type=text][name^='products.product_']").each(update_text_price);
+    update_partner_swag();
+    jQuery(partner_inputs).each(update_text_price);
   });
 
 </script>

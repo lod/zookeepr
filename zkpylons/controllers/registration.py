@@ -355,17 +355,26 @@ class RegistrationController(BaseController):
         defaults['registration.silly_description'] = c.silly_description
         defaults['registration.silly_description_checksum'] = checksum
 
+        # Typically only want to deal with available products
+        # TODO: There is a model available_products() but it isn't quite right for some reason
+        # TODO: What happens if somebody is editing and their current product is now unavailable?
+        for cat in c.product_categories:
+            available1 = cat.available_products(c.signed_in_person, stock=False)
+            available2 = [x for x in available1 if c.product_available(x, stock=False)]
+            available2.sort(key=lambda p: p.display_order)
+            cat.valid_products = available2
+
         # Create nice category and product objects suitable for converting to JSON objects
         available_products = [x for x in c.products if c.product_available(x, stock=False)]
 
         # Describe each product
         c.js_products = { p.id : {
             'id'                : p.id,
-            'category'          : p.category_id,
+            'category_id'       : p.category_id,
             'display_order'     : p.display_order,
             'active'            : p.active,
             'description'       : p.description,
-            'clean_description' : p.clean_description(True),
+            'idname'            : h.computer_title(p.description),
             'cost'              : p.cost
         } for p in available_products}
 
@@ -384,7 +393,7 @@ class RegistrationController(BaseController):
           'clean_name'            : x.clean_name(),
           'display_order'         : x.display_order,
           'invoice_free_products' : x.invoice_free_products,
-          'products'              : [y.id for y in available_products if y.category == x],
+          'product_ids'           : [y.id for y in available_products if y.category == x],
         } for x in c.product_categories}
 
         form = render("/registration/new.mako")

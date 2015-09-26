@@ -1,4 +1,6 @@
 <%page args="category, products"/>
+<%namespace name="form" file="form_tags.mako" />
+
 <fieldset id="${ h.computer_title(category.name) }">
 <h2>${ category.name.title() }</h2>
 <p class="description">${ category.description |n}</p>
@@ -7,10 +9,9 @@
 <ul class="entries">
   %for product in products:
     <li>
-      <label>
-        ${ h.radio('products.category_' + category.clean_name(), str(product.id)) }
+      <%form:radio name="products.${category.clean_name()}" value="${product.id}" />
         ${ product.description } - ${ h.integer_to_currency(product.cost) }
-      </label>
+      </%form:radio>
       %if product.description.lower().find('student') > -1:
         <div id="warningDiv">
           <div class="message message-information">

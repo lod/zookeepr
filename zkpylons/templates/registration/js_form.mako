@@ -29,7 +29,7 @@
     except:
       # No special case template, use default
       tmpl = context.lookup.get_template("/registration/default_js_form.mako")
-    tmpl.render_context(context, category=category)
+    tmpl.render_context(context,category=category,products=category.valid_products)
 %>
 
 <!-- Swag section is shown when we have some possible swag, not before -->

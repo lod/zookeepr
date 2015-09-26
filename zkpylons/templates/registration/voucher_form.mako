@@ -1,9 +1,8 @@
 <h2>Voucher</h2>
+<%namespace name="form" file="form_tags.mako" />
 
 <div class="form-group">
-  <label for="registrationvoucher_code">Voucher code:</label>
-  ${ h.text('registration.voucher_code', size=15) }
-  <p>
+  <%form:text name="registration.voucher_code" label="Voucher code">
     If you have been provided with a voucher code, please enter it here.
-  </p>
+  </%form:text>
 </div>

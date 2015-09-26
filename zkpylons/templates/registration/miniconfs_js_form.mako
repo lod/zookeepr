@@ -1,20 +1,14 @@
-<%page args="category" />
-<%
-  all_products = category.available_products(c.signed_in_person, stock=False)
-  products = [x for x in all_products if c.product_available(x, stock=False)]
-  products.sort(key=lambda p: p.display_order)
-%>
-<fieldset id="${ h.computer_title(category.name) }">
-  <h2>${ category.name.title() }</h2>
-  <p class="description">${ category.description |n}</p>
-  <input type="hidden" name="${'products.error.' + category.clean_name()}">
-  <%include file="miniconf_form.mako" args="category=category, products=products" />
-</fieldset>
+<%page args="category,products" />
+
+<%include file="miniconfs_form.mako" args="category=category, products=products" />
+
 <script>
-  jQuery("#${h.computer_title(category.name)} input[type='checkbox'][name^='products.product_']").on('change', update_checkbox_price);
+  var miniconf_cat_idname = product_categories[${category.id}].idname;
+  var miniconf_inputs = "#"+miniconf_cat_idname+" input[name^='products."+miniconf_cat_idname+".']";
+  jQuery(miniconf_inputs).on('change', update_checkbox_price);
 
   jQuery(function(){
-    jQuery("#${h.computer_title(category.name)} input[type='checkbox'][name^='products.product_']:checked").each(update_checkbox_price);
+    jQuery(miniconf_inputs+":checked").each(update_checkbox_price);
   });
 
 </script>

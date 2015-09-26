@@ -1,11 +1,10 @@
 <%page args="category, products"/>
+<%namespace name="form" file="form_tags.mako" />
 <%
-  import re
   fields = {}
   for product in products:
-    results = re.match("^([a-zA-Z0-9'_]+)\s+(.*)$", product.description)
-    day = results.group(1).replace('_',' ')
-    miniconf = results.group(2)
+    ## Miniconf description field follows format of <day><whitespace><miniconf description>
+    (day, miniconf) = product.description.split(None, 1)
 
     if day not in fields:
       fields[day] = []
@@ -20,21 +19,19 @@
   </tr>
   <tr>
     %for day in sorted(fields):
-      <td>
+      <td><ul class="nomarker">
         %for (miniconf, product) in sorted(fields[day]):
+          <%
+            name = ".".join(["products", c.js_categories[category.id]["idname"], c.js_products[product.id]["idname"]])
+            label = miniconf + (" - " + h.integer_to_currency(product.cost) if product.cost != 0 else "")
+          %>
           %if category.display == 'qty':
-            ${ h.text('products.product_' + product.clean_description(True) + '_qty', size=2, disabled=not product.available(), product_id=product.id) + ' ' + miniconf}
+            <li><%form:text name="${name}" label="${label}" product_id="${product.id}" size="2"/></li>
           %elif category.display == 'checkbox':
-            ${ h.checkbox('products.product_' + product.clean_description(True) + '_checkbox', label=miniconf, disabled=not product.available(), product_id=product.id) }
+            <li><%form:checkbox name="${name}" label="${label}" product_id="${product.id}"/></li>
           %endif
-          %if not product.available():
-            <span class="mandatory">SOLD&nbsp;OUT</span>
-          %elif product.cost != 0:
-            - ${ h.integer_to_currency(product.cost) }
-          %endif
-          <br>
         %endfor
-      </td>
+      </ul></td>
     %endfor
   </tr>
 </table>

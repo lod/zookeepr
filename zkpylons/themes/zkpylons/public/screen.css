@@ -471,3 +471,8 @@ table.form-grid {
 	width: 100%;
 	table-layout: fixed;
 }
+
+/* Lists without bullets, used in forms for checkbox lists, may be useful eleswhere */
+.nomarker li {
+	display: table-row;
+}

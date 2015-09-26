@@ -21,14 +21,9 @@
 
 %if c.config.get('ask_past_confs', category='rego'):
   <label>Have you attended ${ c.config.get('event_generic_name') } before?</label>
-  <table>
-    <tr>
-      <td>
-        %for (year, desc) in c.config.get('past_confs', category='rego'):
-          <% label = 'registration.prevlca.%s' % year %>
-          <label>${ h.checkbox(label) } ${ desc }</label><br />
-        %endfor
-      </td>
-    </tr>
-  </table>
+  <ul class="nomarker">
+    %for (year, desc) in c.config.get('past_confs', category='rego'):
+      <li><%form:checkbox name="registration.prevlca.${year}" label="${desc}"/></li>
+    %endfor
+  </ul>
 %endif

@@ -16,11 +16,11 @@ function cost2nice(cost) {
 
 // Functions to build product groups
 function build_radio_product_group(cat_id) {
-  cat_products = product_categories[cat_id]['products'].map(function(a){return products[a]});
+  cat_products = product_categories[cat_id].product_ids.map(function(a){return products[a]});
   list = jQuery("<ul>");
   cat_products.forEach(function(p){
-    input = jQuery("<input type='radio' value='"+p['id']+"' name='products.category_"+product_categories[cat_id]['clean_name']+"' category_id='"+cat_id+"'>")
-    label = jQuery("<label>"+p['description']+" - "+cost2nice(p['cost'])+"</label>");
+    input = jQuery("<input type='radio' value='"+p.id+"' name='products.category_"+product_categories[cat_id].clean_name+"' category_id='"+cat_id+"'>")
+    label = jQuery("<label>"+p.description+" - "+cost2nice(p.cost)+"</label>");
     list.append(jQuery("<li>").append(label.prepend(input)));
   });
   return list;
@@ -28,8 +28,8 @@ function build_radio_product_group(cat_id) {
 
 function build_select_product_group(cat_id) {
   category = product_categories[cat_id];
-  cat_products = product_categories[cat_id]['products'].map(function(a){return products[a]});
-  select = jQuery("<select category_id='"+cat_id+"' name='"+category['clean_name']+"'>");
+  cat_products = product_categories[cat_id]['product_ids'].map(function(a){return products[a]});
+  select = jQuery("<select category_id='"+cat_id+"' name='"+category.clean_name+"'>");
   cat_products.forEach(function(p){select.append('<option product_id="'+p.id+'" category_id="'+cat_id+'" value="'+p.id+'">'+p['description']+' - '+cost2nice(p['cost'])+'</option>')});
   return select;
 }
@@ -45,7 +45,7 @@ function build_product_group(cat_id) {
 
 // Functions to manage the swag list
 function load_product_group(category_id, target) {
-  //cat_products = product_categories[category]['products'].map(function(a){return products[a]});
+  //cat_products = product_categories[category]['product_ids'].map(function(a){return products[a]});
   //select = jQuery("<select>");
   //cat_products.forEach(function(p){select.append('<option>'+p['description']+'</option>')});
   // TODO: provided product groups shouldn't have a price attached
@@ -80,7 +80,7 @@ function load_included_swag(product_id, target) {
 
 function add_swag_button(category_id) {
   category = product_categories[category_id];
-  button = jQuery("<button type='button' id='swag_add_"+category['idname']+"' category_id='"+category_id+"'>Buy "+category['name']+"</button>");
+  button = jQuery("<button type='button' id='swag_add_"+category.idname+"' category_id='"+category_id+"'>Buy "+category.name+"</button>");
 
   button.on('click', function() {
     if (jQuery("#additional_swag_list").children().length == 0) {
@@ -142,7 +142,7 @@ function update_price_row(product_id, description, price, qty) {
 
   if(qty > 0) {
     product = products[product_id];
-    row = jQuery("<tr product_id='"+product_id+"' category_id='"+product.category+"' id='price_"+product_id+"'>");
+	row = jQuery("<tr product_id='"+product_id+"' category_id='"+product.category_id+"' id='price_"+product_id+"'>");
     row.append("<td>"+description+"</td>");
     row.append("<td>"+qty+"</td>");
     row.append("<td>"+parseFloat(price/100).toFixed(2)+"</td>");
@@ -157,8 +157,8 @@ function update_price_row(product_id, description, price, qty) {
 function update_text_price() {
   var id = jQuery(this).attr('product_id');
   var product = products[id];
-  var category = product_categories[product['category']];
-  if (product.cost != 0 || category['invoice_free_products']) {
+  var category = product_categories[product.category_id];
+  if (product.cost != 0 || category.invoice_free_products) {
     update_price_row(id, category.name+" - "+product.description, product.cost, jQuery(this).val());
   }
 }
@@ -177,10 +177,10 @@ function update_radio_price() {
 function update_checkbox_price() {
   var product_id = jQuery(this).attr('product_id');
   var product = products[product_id];
-  var category = product_categories[product['category']];
+  var category = product_categories[product.category_id];
   var qty = jQuery(this).attr('checked') ? 1 : 0
 
-  if (product.cost != 0 || category['invoice_free_products']) {
+  if (product.cost != 0 || category.invoice_free_products) {
     update_price_row(product_id, category.name+" - "+product.description, product.cost, qty);
   }
 }
@@ -193,8 +193,8 @@ function update_select_price() {
     update_price_row("C"+category_id, "", 0, 0);
   } else {
     var product = products[product_id];
-    var category = product_categories[product['category']];
-    if (product.cost != 0 || category['invoice_free_products']) {
+	var category = product_categories[product.category_id];
+    if (product.cost != 0 || category.invoice_free_products) {
       update_price_row("C"+category_id, category.name+" - "+product.description, product.cost, 1);
     }
   }

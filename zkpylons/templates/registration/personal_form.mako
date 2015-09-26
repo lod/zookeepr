@@ -16,7 +16,7 @@
 
 %if c.config.get('personal_info', category='rego')['home_address'] == 'yes':
   <%form:text name="person.address1" label="Address" mandatory="true" />
-  <%form:text name="person.address2" label="&nbsp;" />
+  <%form:text name="person.address2" />
   <%form:text name="person.city" label="City/Suburb" mandatory="true" />
   <%form:text name="person.state" label="State/Province" />
   <%form:text name="person.postcode" label="Postcode/ZIP" mandatory="true" />

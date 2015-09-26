@@ -1,4 +1,5 @@
 <%page args="category, products"/>
+<%namespace name="form" file="form_tags.mako" />
 
 <%
   fields = dict()
@@ -30,10 +31,11 @@
         ## This structure causes a minor html bug when there are a different number of sizes for each gender
         %for (size, product) in fields[gender]:
           <td>
+            <% name = ".".join(["products", c.js_categories[category.id]["idname"], c.js_products[product.id]["idname"]]) %>
             %if category.display == 'qty':
-              ${ h.text('products.product_' + product.clean_description(True) + '_qty', size=2) }
+              <%form:text name="${name}" product_id="${product.id}" size="2"/>
             %elif category.display == 'checkbox':
-              ${ h.checkbox('products.product_' + product.clean_description(True) + '_checkbox') }
+              <%form:checkbox name="${name}" product_id="${product.id}"/>
             %endif
           </td>
         %endfor # (size, product) in fields[gender]
