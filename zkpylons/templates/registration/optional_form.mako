@@ -8,9 +8,6 @@
     # Name must not contain any whitespace characters
     name.replace(" ", "")
 
-    # Build a list of html attributes from the passed hash
-    attr_list = " ".join([k+'="'+attrs[k]+'"' for k in attrs if type(attrs[k]) == "str"])
-
     # Set the id to match the name - unless it is passed
     # HTML4 states that id must start with A-Z
     # Then contain only A-Z, 0-9, "-", "_", ":" and "."

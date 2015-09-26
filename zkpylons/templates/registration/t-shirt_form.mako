@@ -13,11 +13,8 @@
   endfor # product in products
 %>
 
-<fieldset id="${ h.computer_title(category.name) }">
-  <h2>${ category.name.title() }</h2>
-  <p class="description">${ category.description |n}</p>
-  <input type="hidden" name="${'products.error.' + category.clean_name()}">
-
+<%form:fieldset category="${category}">
+  ## TODO: This structure causes a minor html bug when there are a different number of sizes for each gender
   <table>
     %for gender in fields:
       <tr>
@@ -28,22 +25,16 @@
       </tr>
       <tr>
         <td>${ gender }</td>
-        ## This structure causes a minor html bug when there are a different number of sizes for each gender
         %for (size, product) in fields[gender]:
           <td>
-            <% name = ".".join(["products", c.js_categories[category.id]["idname"], c.js_products[product.id]["idname"]]) %>
             %if category.display == 'qty':
-              <%form:text name="${name}" product_id="${product.id}" size="2"/>
+              <%form:text name="${product.full_idname}" product_id="${product.id}" size="2"/>
             %elif category.display == 'checkbox':
-              <%form:checkbox name="${name}" product_id="${product.id}"/>
+              <%form:checkbox name="${product.full_idname}" product_id="${product.id}"/>
             %endif
           </td>
         %endfor # (size, product) in fields[gender]
       </tr>
     %endfor # gender in fields
   </table>
-
-  %if category.note:
-    <p class="note">${ category.note | n }</p>
-  %endif
-</fieldset>
+</%form:fieldset>

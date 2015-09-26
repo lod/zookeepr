@@ -28,15 +28,7 @@
   ${ h.hidden('person.postcode') }
 %endif
 
-<div class="form-group">
-  <span class="mandatory">*</span>
-  <label for="personcountry">Country:</label>
-  <select id="personcountry" name="person.country">
-    % for country in h.countries():
-      <option value="${country}">${ country }</option>
-    % endfor
-  </select>
-</div>
+<%form:select name="person.country" label="Country" options="${h.countries()}"/>
 
 %if c.config.get('personal_info', category='rego')['phone'] == 'yes':
   <%form:text name="person.phone" label="Phone number (International Format)" />

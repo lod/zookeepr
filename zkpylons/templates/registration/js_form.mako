@@ -21,6 +21,15 @@
   <%include file="voucher_form.mako" />
 </fieldset>
 
+<!-- Swag section is shown when we have some possible swag, not before -->
+<!-- Will be moved down to a more appropriate place when needed -->
+<fieldset id="swag_section" style="display:none" class="form-horizontal">
+  <h2>Swag</h3>
+  <div id="included_swag_lists"></div>
+  <div id="additional_swag_list"></div>
+  <div id="additional_swag_buttons"></div>
+</fieldset>
+
 <%
   # Display each product group
   for category in sorted(c.js_categories.values(), key=lambda cat: cat.display_order):
@@ -33,14 +42,6 @@
     tmpl.render_context(context,category=category,products=products)
 %>
 
-<!-- Swag section is shown when we have some possible swag, not before -->
-<!-- TODO: swag should be inserted at the location of the first use, as per display order -->
-<fieldset id="swag_section" style="display:none" class="form-horizontal">
-  <h2>Swag</h3>
-  <div id="included_swag_lists"></div>
-  <div id="additional_swag_list"></div>
-  <div id="additional_swag_buttons"></div>
-</fieldset>
 
 <fieldset>
   <%include file="further_information_form.mako" />

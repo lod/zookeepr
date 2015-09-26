@@ -1,4 +1,11 @@
+## This file defines custom tags for rendering form elements,
+## particularly for the registration form.
+##
+## It is based on an approach documented by zzzeek, the creator of Mako
+## http://techspot.zzzeek.org/2008/07/01/better-form-generation-with-mako-and-pylons/
+
 <%! import types %>
+
 <%def name="fieldset(category)">\
   <%doc>
     Render a form fieldset with heading, should be used to wrap a group of entries
@@ -17,6 +24,13 @@
     </fieldset>
 </%def>
 
+<%!
+  def _build_attr_list(**attrs):
+    ## Internal helper function to htmlise extra attributes
+    ## TODO: Need to strip id out of attrs
+    return " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
+%>
+
 <%def name="text(name, label='', **attrs)">\
   <%doc>
     Render a text input in a form-group container.
@@ -29,10 +43,6 @@
     # HTML4 states that id must be alphanumeric plus a few
     # HTML5 states than anything non-whitespace is fine, works IE6+
     id = attrs.get("id", name)
-
-    # Build a list of html attributes from the passed hash
-    ## TODO: Need to strip id out of attrs
-    attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
   %>\
   <div class="form-group">
     ## Should use the html required attribute
@@ -45,7 +55,7 @@
         ## Need a label so that horizontal form lays out ok
         <label for="${name}">&nbsp;</label>
     %endif
-    <input type="text" name="${name}" id="${id}" ${attr_list} />
+    <input type="text" name="${name}" id="${id}" ${ _build_attr_list(**attrs) } />
     ## Optionally allow extra input to be entered here
     ${ caller.body() }
   </div>
@@ -65,10 +75,8 @@
     # HTML5 states than anything non-whitespace is fine, works for IE6+
     id = attrs.get("id", name)
 
-    # Build a list of html attributes from the passed hash
-    attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
-
     # Checked is handled specially, controlled by presence not value
+    attr_list = _build_attr_list(**attrs)
     if checked:
       attr_list += ' checked'
   %>\
@@ -94,10 +102,8 @@
     # HTML5 states than anything non-whitespace is fine, works for IE6+
     id = attrs.get("id", name)
 
-    # Build a list of html attributes from the passed hash
-    attr_list = " ".join([k+'='+str(attrs[k]) for k in attrs if hasattr(attrs[k], '__str__')])
-
     # Checked is handled specially, controlled by presence not value
+    attr_list = _build_attr_list(**attrs)
     if checked:
       attr_list += ' checked'
   %>\
@@ -106,6 +112,17 @@
       <input type="radio" value="${value}" name="${name}" id="${id}" ${attr_list}>
       ${label} ${ caller.body() }
     </label>
+  </div>
+</%def>
+
+<%def name="select(name, label='', options=[], **attrs)">
+  <%doc>
+    Render a basic select box, needs to be fleshed out a bit further to expand use cases.
+  </%doc>\
+  <div class="form-group">
+    <span class="mandatory">*</span>
+    <label for="${name}">${label}:</label>
+    ${ h.select(name, None, id=name, options=options) }
   </div>
 </%def>
 

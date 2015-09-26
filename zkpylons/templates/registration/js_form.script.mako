@@ -44,6 +44,24 @@ function build_product_group(cat_id) {
 
 
 // Functions to manage the swag list
+var swag_section_inserted = false;
+function insert_swag_section() {
+  // Swag section is shown when needed, not before
+  // We actually have the swag section in html as #swag_section
+  // But we want to place it at the location of the first insert call
+  // This preserves the display ordering, roughly, kind-of
+
+  if(swag_section_inserted) return; // Only run once
+
+  // Javascript doesn't have a print function... so we need to anchor to a DOM element
+  // Cheat, kind of, put it just after the script element that is currently being parsed
+  // Only works if the caller doesn't defer us until load or some-such
+  jQuery("#swag_section").insertAfter("script:last");
+  jQuery("#swag_section").show();
+
+  swag_section_inserted = true;
+}
+
 function load_product_group(category_id, target) {
   //cat_products = product_categories[category]['product_ids'].map(function(a){return products[a]});
   //select = jQuery("<select>");
@@ -94,7 +112,7 @@ function add_swag_button(category_id) {
   });
 
   jQuery("#additional_swag_buttons").append(button);
-  jQuery("#swag_section").show();
+  insert_swag_section();
 }
 
 
