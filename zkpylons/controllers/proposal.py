@@ -4,6 +4,7 @@ from pylons import request, response, session, tmpl_context as c
 from zkpylons.lib.helpers import redirect_to
 from pylons.decorators import validate
 from pylons.decorators.rest import dispatch_on
+from pylons.controllers.util import abort
 
 from formencode import validators, htmlfill, ForEach
 from formencode.variabledecode import NestedVariables
@@ -12,11 +13,11 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, PersonValidator, ProposalValidator, FileUploadValidator, PersonSchema, ProposalTypeValidator, TargetAudienceValidator, ProposalStatusValidator, AccommodationAssistanceTypeValidator, TravelAssistanceTypeValidator
 import zkpylons.lib.helpers as h
 
-from zkpylons.lib.auth import ActionProtector, is_activated, in_group, not_anonymous
+from zkpylons.lib.auth import ActionProtector, is_activated, in_group, not_anonymous, has_group, Predicate
 
 from zkpylons.lib.mail import email
 
-from zkpylons.model import meta
+from zkpylons.model import meta, DataError
 from zkpylons.model import Proposal, ProposalType, ProposalStatus, TargetAudience, Attachment, Stream, Review, Role, AccommodationAssistanceType, TravelAssistanceType, Person
 from zkpylons.model.config import Config
 
@@ -74,6 +75,14 @@ class ApproveSchema(BaseSchema):
     talk = ForEach(ProposalValidator())
     status = ForEach(ProposalStatusValidator())
 
+class is_author(Predicate):
+    message = "proposal submitter"
+
+    def evaluate(self, environ, credentials):
+        """ Check if the logged in user wrote the proposal """
+        if not c.is_author:
+            self.unmet()
+
 class ProposalController(BaseController):
 
     def __init__(self, *args):
@@ -91,11 +100,23 @@ class ProposalController(BaseController):
         c.accommodation_assistance_types = AccommodationAssistanceType.find_all()
         c.travel_assistance_types = TravelAssistanceType.find_all()
 
+        if 'id' in kwargs:
+            try:
+                c.proposal = Proposal.find_by_id(kwargs['id'], abort_404=False)
+            except DataError:
+                # Typically caused by a bad id - play on as a failed fetch
+                c.proposal = None
+                meta.Session.rollback()
+            person = h.auth.get_person()
+            c.is_author = c.proposal is not None and person is not None and person in c.proposal.people
+            c.can_edit = has_group('organiser') or (c.is_author and
+                    (c.proposal_editing == 'open' or has_group('late_submitter')))
+
     @dispatch_on(POST="_new")
     def new(self):
         if c.cfp_status == 'closed':
-           if not h.auth.authorized(h.auth.Or(h.auth.has_organiser_role, h.auth.has_late_submitter_role)):
-              return render("proposal/closed.mako")
+            if not has_group('organiser') and not has_group('late_submitter'):
+                return render("proposal/closed.mako")
         elif c.cfp_status == 'not_open':
            return render("proposal/not_open.mako")
 
@@ -122,8 +143,8 @@ class ProposalController(BaseController):
     @validate(schema=NewProposalSchema(), form='new', post_only=True, on_get=True, variable_decode=True)
     def _new(self):
         if c.cfp_status == 'closed':
-           if not h.auth.authorized(h.auth.Or(h.auth.has_organiser_role, h.auth.has_late_submitter_role)):
-              return render("proposal/closed.mako")
+            if not has_group('organiser') and not has_group('late_submitter'):
+                return render("proposal/closed.mako")
         elif c.cfp_status == 'not_open':
            return render("proposal/not_open.mako")
 
@@ -134,7 +155,7 @@ class ProposalController(BaseController):
         proposal_results['status'] = ProposalStatus.find_by_name('Pending Review')
 
         c.proposal = Proposal(**proposal_results)
-        c.proposal.abstract = self.clean_abstract(c.proposal.abstract)
+        c.proposal.abstract = self._clean_abstract(c.proposal.abstract)
         meta.Session.add(c.proposal)
 
         if not h.signed_in_person():
@@ -162,8 +183,10 @@ class ProposalController(BaseController):
     @dispatch_on(POST="_review")
     @ActionProtector(in_group('reviewer'))
     def review(self, id):
+        if c.proposal is None:
+            abort(404)
+
         c.streams = Stream.select_values()
-        c.proposal = Proposal.find_by_id(id)
         c.signed_in_person = h.signed_in_person()
         c.next_review_id = Proposal.find_next_proposal(c.proposal.id, c.proposal.type.id, c.signed_in_person.id)
 
@@ -187,7 +210,6 @@ class ProposalController(BaseController):
     def _review(self, id):
         """Review a proposal.
         """
-        c.proposal = Proposal.find_by_id(id)
         c.signed_in_person = h.signed_in_person()
         c.next_review_id = Proposal.find_next_proposal(c.proposal.id, c.proposal.type.id, c.signed_in_person.id)
 
@@ -224,17 +246,10 @@ class ProposalController(BaseController):
         return render('proposal/attach.mako')
 
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), is_author()))
     @validate(schema=NewAttachmentSchema(), form='attach', post_only=True, on_get=True, variable_decode=True)
     def _attach(self, id):
-        """Attach a file to the proposal.
-        """
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.proposal = Proposal.find_by_id(id)
-
+        """ Attach a file to the proposal.  """
         attachment_results = self.form_result['attachment']
         attachment = Attachment(**attachment_results)
 
@@ -246,78 +261,66 @@ class ProposalController(BaseController):
 
         return redirect_to(action='view', id=id)
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), in_group('reviewer'), is_author()))
     def view(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role, h.auth.has_reviewer_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.proposal = Proposal.find_by_id(id)
-
+        if c.proposal is None:
+            abort(404)
         return render('proposal/view.mako')
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), is_author()))
     @dispatch_on(POST="_edit")
     def edit(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        if not h.auth.authorized(h.auth.has_organiser_role):
-            if c.proposal_editing == 'closed' and not h.auth.authorized(h.auth.has_late_submitter_role):
+        if not has_group('organiser'):
+            if c.proposal_editing == 'closed' and not has_group('late_submitter'):
                 return render("proposal/editing_closed.mako")
             elif c.proposal_editing == 'not_open':
                 return render("proposal/editing_not_open.mako")
 
-        c.proposal = Proposal.find_by_id(id)
+        if c.proposal is None:
+            abort(404)
 
-        c.person = c.proposal.people[0]
         for person in c.proposal.people:
             if h.signed_in_person() == person:
                 c.person = person
 
-        defaults = h.object_to_defaults(c.proposal, 'proposal')
-        defaults.update(h.object_to_defaults(c.person, 'person'))
-        defaults['person.name'] = c.person.fullname
-        # This is horrible, don't know a better way to do it
-        if c.proposal.type:
-            defaults['proposal.type'] = defaults['proposal.proposal_type_id']
-        if c.proposal.travel_assistance:
-            defaults['proposal.travel_assistance'] = defaults['proposal.travel_assistance_type_id']
-        if c.proposal.accommodation_assistance:
-            defaults['proposal.accommodation_assistance'] = defaults['proposal.accommodation_assistance_type_id']
-        if c.proposal.audience:
-            defaults['proposal.audience'] = defaults['proposal.target_audience_id']
+        if c.person is None and len(c.proposal.people):
+            c.person = c.proposal.people[0]
 
-        defaults['person_to_edit'] = c.person.id
-        defaults['name'] = c.person.fullname
+        defaults = h.object_to_defaults(c.proposal, 'proposal')
+        if isinstance( c.person, meta.Base):
+            defaults.update(h.object_to_defaults(c.person, 'person'))
+            # TODO: This just delays errors, person_to_edit fails in _edit
+            defaults['person.name'] = c.person.fullname
+            defaults['person_to_edit'] = c.person.id
+            defaults['name'] = c.person.fullname
+
+        defaults['proposal.type']                     = defaults.get('proposal.proposal_type_id')
+        defaults['proposal.travel_assistance']        = defaults.get('proposal.travel_assistance_type_id')
+        defaults['proposal.accommodation_assistance'] = defaults.get('proposal.accommodation_assistance_type_id')
+        defaults['proposal.audience']                 = defaults.get('proposal.target_audience_id')
+
         c.miniconf = (c.proposal.type.name == 'Miniconf')
         form = render('/proposal/edit.mako')
         return htmlfill.render(form, defaults)
 
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), is_author()))
     @validate(schema=ExistingProposalSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
 
-        if not h.auth.authorized(h.auth.has_organiser_role):
-            if c.proposal_editing == 'closed' and not h.auth.authorized(h.auth.has_late_submitter_role):
+        if not has_group('organiser'):
+            if c.proposal_editing == 'closed' and not has_group('late_submitter'):
                 return render("proposal/editing_closed.mako")
             elif c.proposal_editing == 'not_open':
                 return render("proposal/editing_not_open.mako")
 
-        c.proposal = Proposal.find_by_id(id)
         for key in self.form_result['proposal']:
             setattr(c.proposal, key, self.form_result['proposal'][key])
 
-        c.proposal.abstract = self.clean_abstract(c.proposal.abstract)
+        c.proposal.abstract = self._clean_abstract(c.proposal.abstract)
 
         c.person = self.form_result['person_to_edit']
-        if (c.person.id == h.signed_in_person().id or
-                             h.auth.authorized(h.auth.has_organiser_role)):
+        if (c.person.id == h.signed_in_person().id or has_group('organiser')):
             for key in self.form_result['person']:
                 setattr(c.person, key, self.form_result['person'][key])
             p_edit = "and author"
@@ -393,22 +396,15 @@ class ProposalController(BaseController):
         c.statuses = ProposalStatus.find_all()
         return render("proposal/approve.mako")
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), is_author()))
     @dispatch_on(POST="_withdraw")
     def withdraw(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.proposal = Proposal.find_by_id(id)
+        if c.proposal is None:
+            abort(404)
         return render("/proposal/withdraw.mako")
 
     @validate(schema=ApproveSchema(), form='withdraw', post_only=True, on_get=True, variable_decode=True)
     def _withdraw(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.proposal = Proposal.find_by_id(id)
         status = ProposalStatus.find_by_name('Withdrawn')
         c.proposal.status = status
         meta.Session.commit()
@@ -416,8 +412,9 @@ class ProposalController(BaseController):
         c.person = h.signed_in_person()
 
         # Make sure the organisers are notified of this
-        c.email_address = c.proposal.type.notify_email.lower()
-        email(c.email_address, render('/proposal/withdraw_email.mako'))
+        if c.proposal.type.notify_email:
+            c.email_address = c.proposal.type.notify_email.lower()
+            email(c.email_address, render('/proposal/withdraw_email.mako'))
 
         h.flash("Proposal withdrawn. The organisers have been notified.")
         return redirect_to(controller='proposal', action="index", id=None)
@@ -426,14 +423,11 @@ class ProposalController(BaseController):
     def latex(self):
         c.proposal_type = ProposalType.find_all()
 
-        for type in c.proposal_type:
-          print type
-
         response.headers['Content-type']='text/plain; charset=utf-8'
 
         return render('/proposal/latex.mako')
 
-    def clean_abstract(self, abstract):
+    def _clean_abstract(self, abstract):
         return abstract
         # why are we cleaning the abstract here? shouldn't the template engine take care of this?
         abs = h.html_clean(abstract)

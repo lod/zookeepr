@@ -29,6 +29,8 @@ class TestFundingAttachment(CrudHelper):
         assert resp.content_type == "custom/blob"
         assert resp.body == bytes("bloblbolbblob")
 
+        # TODO: Must be organiser or funding reviewer or funding submitter
+
     def test_index(self):
         # Override CRUD
         pass
@@ -40,6 +42,8 @@ class TestFundingAttachment(CrudHelper):
     def test_delete(self, app, db_session):
         parent = FundingFactory() # Used for the redirection
         db_session.commit()
+
+        # TODO: Must be organiser or funding submitter
 
         CrudHelper.test_delete(self, app, db_session, target=FundingAttachmentFactory(funding=parent), title="Delete attachment", next_url= url_for(controller='funding', action='view', id=parent.id))
 

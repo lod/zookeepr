@@ -24,10 +24,10 @@
       <tr class="${ h.cycle("even", "odd") }">
         <td>${ h.link_to('id: ' + str(volunteer.id), url=h.url_for(action='view', id=volunteer.id)) }</td>
         <td>${ h.link_to('id: ' + str(volunteer.person.id), url=h.url_for(controller='person', action='view', id=volunteer.person.id)) }</td>
-        <td>${ h.link_to(volunteer.person.firstname + ' ' + volunteer.person.lastname, h.url_for(controller='person', action='view', id=volunteer.person.id)) }</td>
+        <td>${ h.link_to(volunteer.person.fullname, h.url_for(controller='person', action='view', id=volunteer.person.id)) }</td>
         <td>${ volunteer.person.email_address }</td>
         <td>${ volunteer.person.mobile or volunteer.person.phone | h }</td>
-        <td>${ h.line_break(volunteer.other) }</td>
+		<td>${ h.line_break(volunteer.other) | n }</td>
 %       if volunteer.accepted is None:
         <td>Pending</td>
 %       elif volunteer.accepted == True:

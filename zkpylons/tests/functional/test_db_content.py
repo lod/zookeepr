@@ -1,12 +1,13 @@
 import pytest
 from routes import url_for
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from zk.model import DbContent
-from .fixtures import DbContentFactory, DbContentTypeFactory
+from .fixtures import DbContentFactory, DbContentTypeFactory, PersonFactory
 
 from .crud_helper import CrudHelper
+from .utils import do_login
 
 class TestDBContent(CrudHelper):
     @pytest.yield_fixture(autouse=True)
@@ -78,6 +79,19 @@ class TestDBContent(CrudHelper):
         expected = [target.title, target.body]
 
         CrudHelper.test_view(self, app, db_session, title="", target=target, expected=expected)
+
+        # Content can be there but not released yet, response depends on permissions
+        organiser = PersonFactory(roles = [CrudHelper._get_insert_role('organiser')])
+        plebian = PersonFactory()
+
+        target = DbContentFactory(publish_timestamp=datetime.now() + timedelta(days=1))
+        expected = [target.title, target.body]
+
+        CrudHelper.test_view(self, app, db_session, user=organiser, title="", target=target, expected=["This content is marked to be published on"]+expected)
+
+        do_login(app, plebian)
+        unreleased_get = app.get(url_for(controller='db_content', action='view', id=target.id), status=404)
+        assert "The page you requested does not actually exist" in unreleased_get.text
 
 
     def test_index(self, app, db_session):

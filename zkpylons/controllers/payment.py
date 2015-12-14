@@ -14,8 +14,7 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, ExistingPaymentValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, in_group, not_anonymous, Predicate, has_group
 
 from zkpylons.lib.mail import email
 
@@ -54,31 +53,38 @@ class SecurePayPingSchema(BaseSchema):
     remote_ip = validators.String(not_empty=True)
     receipt_address = validators.String(not_empty=False, if_empty="")
 
+class is_invoice_owner(Predicate):
+    message = "invoice owner"
+    def evaluate(self, environ, credentials):
+        person_email = environ.get('REMOTE_USER')
+        payment_id = environ['pylons.routes_dict'].get('id')
+        if person_email is None or payment_id is None:
+            self.unmet()
+
+        payment = Payment.find_by_id(payment_id, abort_404=False)
+        if payment is None:
+            self.unmet()
+
+        if person_email != payment.invoice.person.email_address:
+            self.unmet()
+
 class PaymentController(BaseController):
     """This controller receives payment advice from the payment gateway.
 
     the url /payment/new receives the advice
     """
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.payment_collection = Payment.find_all()
         return render('/payment/list.mako')
 
-    @authorize(h.auth.is_valid_user)
+    @ActionProtector(h.auth.Any(is_invoice_owner(), in_group('organiser')))
     def view(self, id):
 
         payment = Payment.find_by_id(id, abort_404=True)
         c.person = payment.invoice.person
-
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(c.person.id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.is_organiser = False
-        if h.auth.authorized(h.auth.has_organiser_role):
-            c.is_organiser = True
-
+        c.is_organiser = h.auth.has_group('organiser')
         c.payment = PaymentReceived.find_by_payment(payment.id)
 
         c.validation_errors = []
@@ -182,7 +188,7 @@ class PaymentController(BaseController):
         # so they can see if their transaction was accepted or declined
         return redirect_to(action='view', id=payment.id)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new_manual")
     def new_manual(self, id):
         c.payment = Payment.find_by_id(id)
@@ -201,7 +207,7 @@ class PaymentController(BaseController):
         form = render('/payment/new.mako')
         return htmlfill.render(form, defaults)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=NewPaymentSchema(), form='new_manual', post_only=True, on_get=True, variable_decode=True)
     def _new_manual(self, id):
         """Create a new payment."""

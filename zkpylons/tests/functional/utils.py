@@ -9,7 +9,7 @@ def do_login(app, person_or_email_address, password=None):
         email_address = person_or_email_address
 
     # Disabling cookies makes login function reentrant
-    resp = app.get(url_for(controller='person', action='signin'), headers={'Cookie':''})
+    resp = app.get(url_for(controller='person', action='signin', id=None), headers={'Cookie':''})
 
     f = resp.forms['signin-form']
     f['login'] = email_address

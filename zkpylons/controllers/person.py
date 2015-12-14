@@ -14,7 +14,7 @@ from zkpylons.lib.validators import BaseSchema, NotExistingPersonValidator, Exis
 import zkpylons.lib.helpers as h
 from zkpylons.lib.helpers import check_for_incomplete_profile
 
-from zkpylons.lib.auth import ActionProtector, override_login, is_user, in_group, Any, not_anonymous
+from zkpylons.lib.auth import ActionProtector, override_login, is_user, in_group, Any, not_anonymous, Predicate
 from zkpylons.lib.mail import email
 
 from zkpylons.model import meta
@@ -145,6 +145,19 @@ class OfferSchema(BaseSchema):
     travel = TravelSchema(if_missing=None)
     pre_validators = [NestedVariables]
 
+class is_same_user(Predicate):
+    message = "Must own account"
+    def evaluate(self, environ, credentials):
+        person_email = environ.get('REMOTE_USER')
+        person_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or person_id is None:
+            self.unmet()
+
+        person = Person.find_by_id(person_id, abort_404=False)
+
+        if person is None or person.email_address != person_email:
+            self.unmet()
 
 class PersonController(BaseController): #Read, Update, List
     @enforce_ssl(required_all=True)
@@ -391,13 +404,9 @@ class PersonController(BaseController): #Read, Update, List
         # update the objects with the validated form data
         meta.Session.commit()
 
-    @ActionProtector(not_anonymous())
+    @ActionProtector(h.auth.Any(is_same_user(), in_group('organiser')))
     @dispatch_on(POST="_edit")
     def edit(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not (h.auth.get_person_id() == id or h.auth.has_organiser_role()):
-            # Raise a no_auth error
-            h.auth.no_role()
         c.form = 'edit'
         c.person = Person.find_by_id(id)
         c.social_networks = SocialNetwork.find_all()
@@ -411,15 +420,10 @@ class PersonController(BaseController): #Read, Update, List
         return htmlfill.render(form, defaults)
 
 
-    @ActionProtector(not_anonymous())
+    @ActionProtector(h.auth.Any(is_same_user(), in_group('organiser')))
     @validate(schema=UpdatePersonSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
         """UPDATE PERSON"""
-        # We need to recheck auth in here so we can pass in the id
-        if not (h.auth.get_person_id() == id or h.auth.has_organiser_role()):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.person = Person.find_by_id(id)
         self.finish_edit(c.person)
 
@@ -506,13 +510,8 @@ class PersonController(BaseController): #Read, Update, List
         c.person_collection = Person.find_all()
         return render('/person/list.mako')
 
-    @ActionProtector(not_anonymous())
+    @ActionProtector(h.auth.Any(is_same_user(), in_group('organiser'), in_group('reviewer')))
     def view(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not (h.auth.get_person_id() == id or h.auth.has_reviewer_role() or h.auth.has_organiser_role()):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.registration_status = h.config['app_conf'].get('registration_status')
         c.person = Person.find_by_id(id)
 
@@ -560,12 +559,8 @@ class PersonController(BaseController): #Read, Update, List
         return render('person/roles.mako')
 
     @dispatch_on(POST="_offer")
-    @ActionProtector(not_anonymous())
+    @ActionProtector(h.auth.Any(is_same_user(), in_group('organiser'), in_group('reviewer')))
     def offer(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not (h.auth.get_person_id() == id or h.auth.has_reviewer_role() or h.auth.has_organiser_role()):
-            # Raise a no_auth error
-            h.auth.no_role()
         c.person = Person.find_by_id(id)
         c.offers = c.person.proposal_offers
         c.travel_assistance = reduce(lambda a, b: a or ('Travel' in b.status.name), c.offers, False) or False
@@ -581,13 +576,9 @@ class PersonController(BaseController): #Read, Update, List
         form = render('person/offer.mako')
         return htmlfill.render(form, defaults)
 
-    @ActionProtector(not_anonymous())
+    @ActionProtector(h.auth.Any(is_same_user(), in_group('organiser'), in_group('reviewer')))
     @validate(schema=OfferSchema, form='offer', post_only=True, on_get=True, variable_decode=True)
     def _offer(self,id):
-        # We need to recheck auth in here so we can pass in the id
-        if not (h.auth.get_person_id() == id or h.auth.has_reviewer_role() or h.auth.has_organiser_role()):
-            # Raise a no_auth error
-            h.auth.no_role()
         c.person = Person.find_by_id(id)
         c.offers = c.person.proposal_offers
         c.travel_assistance = reduce(lambda a, b: a or ('Travel' in b.status.name), c.offers, False) or False

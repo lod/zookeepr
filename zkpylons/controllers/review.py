@@ -12,24 +12,48 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, ReviewSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
-from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ControllerProtector, ActionProtector, in_group, Predicate
 
 from zkpylons.model import meta
 from zkpylons.model import Review, Stream, Person, ProposalType, Proposal
 
 log = logging.getLogger(__name__)
 
+class is_reviewer(Predicate):
+    message = "Must be review author"
+
+    def evaluate(self, environ, credentials):
+        """ Check if the logged in user authored the review """
+        person_email = environ.get('REMOTE_USER')
+        review_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or review_id is None:
+            self.unmet()
+
+        review = Review.find_by_id(review_id, abort_404=False)
+        if review is None or review.reviewer.email_address != person_email:
+            self.unmet()
+
+class is_proposer(Predicate):
+    message = "Must be proposal author"
+
+    def evaluate(self, environ, credentials):
+        """ Check if the logged in user authored the proposal """
+        person_email = environ.get('REMOTE_USER')
+        review_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or review_id is None:
+            self.unmet()
+
+        review = Review.find_by_id(review_id, abort_404=False)
+        if review is None or person_email not in [p.email_address for p in review.proposal.people]:
+            self.unmet()
+
+
+@ControllerProtector(in_group('reviewer'))
 class ReviewController(BaseController):
-    @authorize(h.auth.has_reviewer_role)
     def __before__(self, **kwargs):
         c.streams = Stream.select_values()
-
-    def _is_reviewer(self):
-        if not h.signed_in_person() is c.review.reviewer:
-            h.auth.no_role()
 
     @dispatch_on(POST="_edit") 
     def edit(self, id):
@@ -37,23 +61,16 @@ class ReviewController(BaseController):
 
         redirect_to(h.url_for(controller='proposal', id=c.review.proposal.id, action='review'))
 
+    @ActionProtector(is_reviewer())
     @dispatch_on(POST="_delete")
     def delete(self, id):
         c.review = Review.find_by_id(id)
-
-        if c.review.reviewer.id != h.signed_in_person().id:
-            # Raise a no_auth error
-            h.auth.no_role()
 
         return render('/review/confirm_delete.mako')
 
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
     def _delete(self, id):
         c.review = Review.find_by_id(id)
-
-        if c.review.reviewer.id != h.signed_in_person().id:
-            # Raise a no_auth error
-            h.auth.no_role()
 
         meta.Session.delete(c.review)
         meta.Session.commit()
@@ -74,15 +91,10 @@ class ReviewController(BaseController):
             c.review_collection_by_type[proposal_type] = query.all()
         return render('/review/list.mako')
 
+    # Proposer can't view their own reviews, unless they are special
+    @ActionProtector(h.auth.Any(h.auth.Not(is_proposer()), in_group('organiser')))
     def view(self, id):
         c.review = Review.find_by_id(id)
-
-        # TODO: currently not enough (see TODOs in model/proposal.py)
-        #if not h.auth.authorized(h.auth.has_organiser_role):
-        #    # You can't review your own proposal
-        #    for person in c.review.proposal.people:
-        #        if person.id == h.signed_in_person().id:
-        #            h.auth.no_role()
 
         if c.review is None:
             redirect_to(action='index')

@@ -1,7 +1,7 @@
 <%inherit file="/base.mako" />
     <div id="actions">
       <ul>
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
         <li>${ h.link_to(c.invoice.person.firstname + "'s Profile", url=h.url_for(controller='person', action='view', id=c.invoice.person.id)) }</li>
 % endif
 % if c.invoice.person.registration is not None:
@@ -10,7 +10,7 @@
         <li>${ h.link_to('Printable version', url=h.url_for(action='printable')) }</li>
         <li>${ h.link_to('PDF version', url=h.url_for(action='pdf')) }</li>
         <li>${ h.link_to('Generate access URL', url=h.url_for(action='generate_hash')) }</li>
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 %   if c.invoice.is_void:
         <li>${ h.link_to('Unvoid this invoice', url = h.url_for(action='unvoid')) }</li>
          <ul><li>Unvoiding invoices marks them as manual.</li></ul>
@@ -19,13 +19,13 @@
 %   endif
 % endif
 % if c.invoice.is_void and c.invoice.person.registration:
-%   if h.auth.authorized(h.auth.has_organiser_role):
+%   if h.auth.has_group('organiser'):
         <li>${  h.link_to('Generate a new invoice', url=h.url_for(controller='registration', action='pay', id=c.invoice.person.registration.id)) }</li>
 %   else:
         <li>This invoice has been cancelled. You must now ${ h.link_to('generate a new invoice', url=h.url_for(controller='registration', action='pay', id=c.invoice.person.registration.id)) }</li>
 %   endif
 % elif c.invoice.is_paid:
-%   if h.auth.authorized(h.auth.has_organiser_role):
+%   if h.auth.has_group('organiser'):
         <li>Invoice was paid by ${ c.invoice.person.email_address }.</li>
         <li>${ h.link_to('Refund Invoice', url = h.url_for(action='new', id=None, refund_invoice_id=c.invoice.id)) }</li>
 %   else:
@@ -34,7 +34,7 @@
 % elif len(c.invoice.bad_payments) > 0:
         <li>Invalid payments have been applied to this invoice, please ${ h.link_to('try again', url=h.url_for(action='void', id=c.invoice.id)) } or email ${ h.email_link_to(c.config.get('contact_email'), 'the organising committee') }</a></li>
 % else:
-%   if h.auth.authorized(h.auth.has_organiser_role):
+%   if h.auth.has_group('organiser'):
         <li>${ h.link_to('Pay this invoice manually', url = h.url_for(action='pay_manual')) }</li>
          <ul><li>Use this if the person has paid via direct credit to the bank account or similar</li></ul>
         <li>${ h.link_to('Extend due date', h.url_for(action='extend')) }</li>
@@ -48,7 +48,7 @@
 %   endif
 % endif
 
-%if h.auth.authorized(h.auth.has_organiser_role):
+%if h.auth.has_group('organiser'):
         <ul>
 %     for pr in c.invoice.payment_received:
             <li>

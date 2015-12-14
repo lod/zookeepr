@@ -3,8 +3,7 @@
 <h2>Coming soon!</h2>
 
 <p>
-The funding requests has not opened yet. This means you can't edit any
-requests yet! lease visit back later.
+The funding requests have not yet opened.  Please visit back later.
 </p>
 
 <p>

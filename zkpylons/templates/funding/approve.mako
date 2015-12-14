@@ -4,13 +4,16 @@
 
 ${ h.form(h.url_for()) }
 <table>
-  <tr>
-    <th>#</th>
-    <th>Name</th>
-    <th>Proposal Type</th>
-    <th>Current Status</th>
-    <th>Change Status</th>
-  </tr>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Name</th>
+      <th>Proposal Type</th>
+      <th>Current Status</th>
+      <th>Change Status</th>
+    </tr>
+  </thead>
+  <tbody>
 %   for s in c.requests:
   <tr class="${ h.cycle('even', 'odd') }">
     <td>${ h.link_to("%d" % s.id, url=h.url_for(action='view', id=s.id)) }</td>
@@ -37,6 +40,7 @@ ${ h.form(h.url_for()) }
     </td>
   </tr>
 % endfor
+  </tbody>
 </table>
 <p class="submit">${ h.submit('submit', 'Submit!') }</p>
 ${ h.end_form() }

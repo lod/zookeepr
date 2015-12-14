@@ -15,8 +15,7 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, in_group
 
 from datetime import date, time, datetime, timedelta
 from pytz import timezone
@@ -197,9 +196,9 @@ class ScheduleController(BaseController):
         response.headers.add('Cache-Control', 'max-age=3600,public')
         return output
 
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new")
     @validate(schema=NewScheduleFormSchema(), on_get=True, post_only=False, variable_decode=True)
-    @authorize(h.auth.has_organiser_role)
     def new(self):
         c.time_slots = TimeSlot.find_all()
         c.locations = Location.find_all()
@@ -224,13 +223,13 @@ class ScheduleController(BaseController):
     def view(self, id):
         return redirect_to(action='edit')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.schedule_collection = Schedule.find_all()
         return render('/schedule/list.mako')
 
     @dispatch_on(POST="_edit")
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def edit(self, id):
         c.time_slots = TimeSlot.find_all()
         c.locations = Location.find_all()
@@ -258,8 +257,8 @@ class ScheduleController(BaseController):
         h.flash("The Schedule has been updated successfully.")
         redirect_to(action='index', id=None)
 
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete")
-    @authorize(h.auth.has_organiser_role)
     def delete(self, id):
         """Delete the schedule
 
@@ -271,7 +270,6 @@ class ScheduleController(BaseController):
         return render('/schedule/confirm_delete.mako')
 
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_organiser_role)
     def _delete(self, id):
         c.schedule = Schedule.find_by_id(id)
         meta.Session.delete(c.schedule)

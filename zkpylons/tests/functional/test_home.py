@@ -27,5 +27,5 @@ class TestHomeController(object):
         # There is also code to redirect to /register/new but it isn't reached
         #assert resp.request.path == '/register/status'
 
-        assert resp.request.path == '/person/signin'
+        assert resp.request.path == '/person/post_signin'
         #resp.mustcontain("Sign out")

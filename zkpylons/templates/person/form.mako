@@ -6,7 +6,7 @@
 
 ${ h.hidden('person.company', value='') }
 
-% if c.form is not 'edit' or h.auth.authorized(h.auth.has_organiser_role):
+% if c.form is not 'edit' or h.auth.has_group('organiser'):
 <p class="label"><span class="mandatory">*</span><label for="person.email_address">Email address:</label></p>
 <p class="entries">${ h.text('person.email_address', size=40) }</p>
 % else:

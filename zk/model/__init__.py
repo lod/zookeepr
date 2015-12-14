@@ -77,6 +77,10 @@ from special_offer import SpecialOffer
 from db_content import DbContentType, DbContent
 
 from url_hash import URLHash
+from config import Config
+
+from vote import Vote
+from volunteer import Volunteer
 
 def init_model(engine):
     """Call me before using any of the tables or classes in the model"""

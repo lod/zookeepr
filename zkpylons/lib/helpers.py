@@ -180,7 +180,7 @@ def slideshow(set, small=None):
 break_re = re.compile(r'(\n|\r\n)(?!\s*<(li|ul|ol)>)')
 def line_break(text):
     """ Turn line breaks into <br>'s """
-    return break_re.sub('<br />', text)
+    return break_re.sub('<br />', text) if isinstance(text, basestring) else ""
 
 def yesno(value):
     """ Display a read-only checkbox for the value provided """
@@ -354,7 +354,7 @@ def signed_in_person():
     if email_address is None:
         return None
 
-    person = Person.find_by_email(email_address, True)
+    person = Person.find_by_email(email_address, abort_404 = False)
     return person
 
 def object_to_defaults(object, prefix):

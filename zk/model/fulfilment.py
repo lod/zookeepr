@@ -41,7 +41,7 @@ class FulfilmentStatus(Base):
     def find_by_id(cls, id, abort_404 = True):
         result = Session.query(cls).get(id)
         if result is None and abort_404:
-            abort(404, "No such person object")
+            abort(404, "No such fulfilment status object")
         return result
 
     @classmethod
@@ -75,7 +75,7 @@ class FulfilmentType(Base):
     def find_by_id(cls, id, abort_404 = True):
         result = Session.query(cls).get(id)
         if result is None and abort_404:
-            abort(404, "No such person object")
+            abort(404, "No such fulfilment type object")
         return result
 
     @classmethod
@@ -120,7 +120,7 @@ class FulfilmentGroup(Base):
     def find_by_id(cls, id, abort_404 = True):
         result = Session.query(cls).get(id)
         if result is None and abort_404:
-            abort(404, "No such person object")
+            abort(404, "No such fulfilment group object")
         return result
 
     @classmethod

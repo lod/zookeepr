@@ -6,7 +6,7 @@ import urllib
 %>
 
 <%def name="toolbox_extra_admin()">
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
   <li>${ h.link_to('Edit Proposal', url=h.url_for(controller='proposal', action='edit',id=c.talk.id)) }</li>
   <li>${ h.link_to('View Proposal', url=h.url_for(controller='proposal', action='view',id=c.talk.id)) }</li>
 % endif 

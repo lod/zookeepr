@@ -14,8 +14,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, DictSet, ProductValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ControllerProtector, ActionProtector, in_group, is_activated, Predicate, has_group
 
 from zkpylons.lib.mail import email
 
@@ -42,11 +41,23 @@ class EditVolunteerSchema(BaseSchema):
 class AcceptVolunteerSchema(BaseSchema):
     ticket_type = ProductValidator()
 
+class is_this_volunteer(Predicate):
+    message = "volunteer"
+    def evaluate(self, environ, credentials):
+        person_email = environ.get('REMOTE_USER')
+        volunteer_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or volunteer_id is None:
+            self.unmet()
+
+        volly = Volunteer.find_by_id(volunteer_id, abort_404=False)
+        if volly is None or person_email != volly.person.email_address:
+            self.unmet()
+
+@ControllerProtector(is_activated())
 class VolunteerController(BaseController):
 
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
     def __before__(self, **kwargs):
         pass
 
@@ -90,31 +101,26 @@ class VolunteerController(BaseController):
         meta.Session.commit()
         redirect_to(action='view', id=c.volunteer.id)
 
+    @ActionProtector(h.auth.Any(is_this_volunteer(), in_group('organiser')))
     def view(self, id):
-        c.volunteer = Volunteer.find_by_id(id)
-
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(c.volunteer.person.id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.can_edit = h.auth.is_same_zkpylons_user(c.volunteer.person.id)
-
-        c.volunteer = Volunteer.find_by_id(id)
+        c.volunteer = Volunteer.find_by_id(id, abort_404=False)
         if c.volunteer is None:
             abort(404, "No such object")
+
+        c.can_edit = h.auth.get_person_id() == c.volunteer.person.id
+
 
         return render('volunteer/view.mako')
 
     def index(self):
         # Check access and redirect
-        if not h.auth.authorized(h.auth.has_organiser_role):
+        if not has_group('organiser'):
             redirect_to(action='new')
 
         c.volunteer_collection = Volunteer.find_all()
         return render('volunteer/list.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_accept")
     def accept(self, id):
         volunteer = Volunteer.find_by_id(id)
@@ -131,7 +137,7 @@ class VolunteerController(BaseController):
         form = render('volunteer/accept.mako') 
         return htmlfill.render(form, defaults)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=AcceptVolunteerSchema(), form='accept', post_only=True, on_get=True, variable_decode=True)
     def _accept(self, id):
         results = self.form_result
@@ -145,7 +151,7 @@ class VolunteerController(BaseController):
         h.flash('Status Updated and Acceptance Email Sent')
         redirect_to(action='index', id=None)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def pending(self, id):
         volunteer = Volunteer.find_by_id(id)
         volunteer.accepted = None
@@ -154,7 +160,7 @@ class VolunteerController(BaseController):
         h.flash('Status Updated')
         redirect_to(action='index', id=None)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def reject(self, id):
         volunteer = Volunteer.find_by_id(id)
         volunteer.accepted = False

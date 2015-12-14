@@ -12,9 +12,7 @@ from formencode.variabledecode import NestedVariables
 
 from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema
-
-from repoze.what.plugins.pylonshq import ActionProtector
-from repoze.what.predicates import is_user, in_group, Any
+from zkpylons.lib.auth import ActionProtector, in_group
 
 from zkpylons.model import meta, Person, Product, Registration, ProductCategory
 from zkpylons.model import Proposal, ProposalType, ProposalStatus, Invoice, Funding
@@ -214,8 +212,7 @@ class AdminController(BaseController):
     def list_attachments(self):
         """ List of attachments [CFP] """
         return sql_response('''
-        select title, filename from attachment, proposal where proposal.id=proposal_id;
-
+            select title, filename from attachment, proposal where proposal.id=proposal_id;
         ''')
 
 
@@ -1161,7 +1158,7 @@ class AdminController(BaseController):
         """
         return sql_response(query)
 
-    @ActionProtector(Any(in_group('funding_reviewer'), in_group('keysigning')))
+    @ActionProtector(h.auth.Any(in_group('funding_reviewer'), in_group('keysigning')))
     def _keysigning_participants_list(self):
         """ Generate a list of all current key id's [Keysigning] """
         from pylons import response
@@ -1170,7 +1167,7 @@ class AdminController(BaseController):
             response.content.append(keyid + "\n")
         return response
 
-    @ActionProtector(Any(in_group('funding_reviewer'), in_group('keysigning')))
+    @ActionProtector(h.auth.Any(in_group('funding_reviewer'), in_group('keysigning')))
     def _keysigning_single(self):
         """ Generate an A4 page of key fingerprints given a keyid [Keysigning] """
         if request.POST:
@@ -1185,7 +1182,7 @@ class AdminController(BaseController):
         else:
             return render('/admin/keysigning_single.mako')
 
-    @ActionProtector(Any(in_group('funding_reviewer'), in_group('keysigning')))
+    @ActionProtector(h.auth.Any(in_group('funding_reviewer'), in_group('keysigning')))
     def _keysigning_conference(self):
         """ Generate an A4 page of key fingerprints for everyone who has provided their fingerprint [Keysigning] """
         import os, tempfile

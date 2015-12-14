@@ -105,3 +105,6 @@ class TestRegistration(object):
         assert regs[0].person.country  == data['person']['country']
         assert regs[0].person.phone    == str(data['person']['phone'])
         assert regs[0].person.mobile   == str(data['person']['mobile'])
+
+    def test_status(self, app, db_session):
+        pass

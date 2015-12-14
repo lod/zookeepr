@@ -13,75 +13,64 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, ProductValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import Predicate, in_group, Any, ControllerProtector, ActionProtector, is_activated
 
 from zkpylons.lib.mail import email
 
-from zkpylons.model import meta
-from zkpylons.model import Attachment, Proposal
+from zkpylons.model import meta, Attachment, Proposal, Person
+
+from zkpylons.config.lca_info import lca_info
 
 log = logging.getLogger(__name__)
 
+class is_author(Predicate):
+    message = u'You may only access your own proposals'
+    def evaluate(self, environ, credentials):
+
+        person_email = environ.get('REMOTE_USER')
+        proposal_id = environ['pylons.routes_dict'].get('id')
+
+        if proposal_id is None or person_email is None:
+            self.unmet()
+
+        person = Person.find_by_email(environ['REMOTE_USER'])
+        attachment = Attachment.find_by_id(proposal_id, abort_404=False)
+        if attachment is None or person is None:
+            self.unmet()
+
+        if person not in attachment.proposal.people:
+            self.unmet()
+
+
+@ControllerProtector(Any(in_group('organiser'), is_author()))
 class AttachmentController(BaseController):
-    @authorize(h.auth.is_valid_user)
     def __before__(self, **kwargs):
-        pass
+        attachment_id = kwargs.get('id')
+        if attachment_id is None:
+            abort(404) # Page without id doesn't exist
+        c.attachment = Attachment.find_by_id(attachment_id)
+        if(c.attachment == None):
+            abort(404) # Page with this id doesn't exist
 
     @dispatch_on(POST="_delete")
-    @authorize(h.auth.is_activated_user)
     def delete(self, id):
-        attachment = Attachment.find_by_id(id)
-        if(attachment == None): abort(400)
-
-        authorized = h.auth.authorized(h.auth.has_organiser_role)
-        for person in attachment.proposal.people:
-            if h.auth.authorized(h.auth.is_same_zkpylons_user(person.id)):
-                authorized = True
-        if not authorized:
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        c.attachment = attachment
-        c.proposal = attachment.proposal
-        
+        c.proposal = c.attachment.proposal
         return render('/attachment/confirm_delete.mako')
 
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
     def _delete(self, id):
-        attachment = Attachment.find_by_id(id)
-        if(attachment == None): abort(400)
-
-        authorized = h.auth.authorized(h.auth.has_organiser_role)
-        for person in attachment.proposal.people:
-            if h.auth.authorized(h.auth.is_same_zkpylons_user(person.id)):
-                authorized = True
-        if not authorized:
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        meta.Session.delete(attachment)
+        proposal_id = c.attachment.proposal.id # Cache before deletion
+        meta.Session.delete(c.attachment)
         meta.Session.commit()
 
         h.flash("Attachment Deleted")
-        redirect_to(controller='proposal', action='view', id=attachment.proposal.id)
+        redirect_to(controller='proposal', action='view', id=proposal_id)
 
     def view(self, id):
-        attachment = Attachment.find_by_id(id)
-        if(attachment == None): abort(400)
-
-        authorized = h.auth.authorized(h.auth.has_organiser_role)
-        for person in attachment.proposal.people:
-            if h.auth.authorized(h.auth.is_same_zkpylons_user(person.id)):
-                authorized = True
-        if not authorized:
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        response.headers['content-type'] = attachment.content_type.encode('ascii','ignore')
+        response.headers['content-type'] = c.attachment.content_type.encode('ascii','ignore')
         response.headers.add('content-transfer-encoding', 'binary')
-        response.headers.add('content-length', len(attachment.content))
-        response.headers['content-disposition'] = 'attachment; filename="%s";' % attachment.filename.encode('ascii','ignore')
+        response.headers.add('content-length', len(c.attachment.content))
+        response.headers['content-disposition'] = 'attachment; filename="%s";' % c.attachment.filename.encode('ascii','ignore')
         response.headers.add('Pragma', 'cache')
         response.headers.add('Cache-Control', 'max-age=3600,public')
-        return attachment.content
+        return c.attachment.content

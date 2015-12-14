@@ -12,8 +12,7 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, FundingReviewSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ControllerProtector, ActionProtector, in_group, Predicate
 
 from zkpylons.lib.mail import email
 
@@ -26,22 +25,33 @@ class EditFundingReviewSchema(BaseSchema):
     review = FundingReviewSchema()
     pre_validators = [NestedVariables]
 
+class is_reviewer(Predicate):
+    message = "Review author"
+
+    def evaluate(self, environ, credentials):
+        """ Check if the logged in user authored the review """
+        person_email = environ.get('REMOTE_USER')
+        review_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or review_id is None:
+            self.unmet()
+
+        if FundingReview.find_by_id(review_id, abort_404=False).reviewer.email_address != person_email:
+            self.unmet()
+
+
+@ControllerProtector(in_group('funding_reviewer'))
 class FundingReviewController(BaseController):
-    @authorize(h.auth.has_funding_reviewer_role)
     def __before__(self, **kwargs):
         return True
 
-    def _is_reviewer(self):
-        if not h.signed_in_person() is c.review.reviewer:
-            h.auth.no_role()
-
+    @ActionProtector(is_reviewer())
     @dispatch_on(POST="_edit") 
     def edit(self, id):
         c.form = 'edit'
         c.review = FundingReview.find_by_id(id)
-        self._is_reviewer()
-
         c.funding = c.review.funding
+
         defaults = h.object_to_defaults(c.review, 'review')
         if defaults['review.score'] == None:
             defaults['review.score'] = 'null'
@@ -55,7 +65,6 @@ class FundingReviewController(BaseController):
     @validate(schema=EditFundingReviewSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
         c.review = FundingReview.find_by_id(id)
-        self._is_reviewer()
 
         if self.form_result['review']['score'] == 'null':
             self.form_result['review']['score'] = None
@@ -69,17 +78,16 @@ class FundingReviewController(BaseController):
         h.flash("Review has been edited!")
         redirect_to(action='view', id=id)
 
+    @ActionProtector(is_reviewer())
     @dispatch_on(POST="_delete")
     def delete(self, id):
         c.review = FundingReview.find_by_id(id)
-        self._is_reviewer()
         
         return render('/funding_review/confirm_delete.mako')
 
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
     def _delete(self, id):
         c.review = FundingReview.find_by_id(id)
-        self._is_reviewer()
 
         meta.Session.delete(c.review)
         meta.Session.commit()

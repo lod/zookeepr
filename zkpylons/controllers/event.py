@@ -13,8 +13,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, ProposalValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.lib.mail import email
 
@@ -41,10 +40,10 @@ class EditEventSchema(BaseSchema):
     event = EventSchema()
     pre_validators = [NestedVariables]
 
+@ControllerProtector(in_group('organiser'))
 class EventController(BaseController):
 
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.has_organiser_role)
     def __before__(self, **kwargs):
         c.proposals = Proposal.find_all_accepted_without_event()
         c.event_types = EventType.find_all()

@@ -49,7 +49,7 @@ ${ h.link_to("withdraw", url=h.url_for(controller='funding', action='withdraw', 
 
 <p><ul>
 %  if c.funding_status == 'open':
-<li>${ h.link_to('New funding request', url=h.url_for(controller='funding', action='new')) }</li>
+  <li>${ h.link_to('New funding request', url=h.url_for(controller='funding', action='new', id=None)) }</li>
 %  endif
 </ul></p>
 

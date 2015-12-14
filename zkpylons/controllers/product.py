@@ -13,8 +13,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, ProductCategoryValidator, CeilingValidator, FulfilmentTypeValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, in_group, Any
 
 from zkpylons.model import meta, FulfilmentType
 from zkpylons.model.ceiling import Ceiling
@@ -51,7 +50,7 @@ class ProductController(BaseController):
         c.fulfilment_types = FulfilmentType.find_all()
         c.ceilings = Ceiling.find_all()
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new") 
     def new(self, cat_id=None):
         form=render('/product/new.mako')
@@ -62,7 +61,7 @@ class ProductController(BaseController):
                 'product.category': cat_id,
                 'product.category_id': cat_id})
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=NewProductSchema(), form='new', post_only=True, on_get=True, variable_decode=True)
     def _new(self):
         results = self.form_result['product']
@@ -74,18 +73,18 @@ class ProductController(BaseController):
         h.flash("Product created")
         redirect_to(action='view', id=c.product.id)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def view(self, id):
         c.can_edit = True
         c.product = Product.find_by_id(id)
         return render('/product/view.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.can_edit = True
         return render('/product/list.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_edit") 
     def edit(self, id):
         c.product = Product.find_by_id(id)
@@ -102,7 +101,7 @@ class ProductController(BaseController):
         form = render('/product/edit.mako')
         return htmlfill.render(form, defaults)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=EditProductSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
         product = Product.find_by_id(id)
@@ -115,7 +114,7 @@ class ProductController(BaseController):
         h.flash("The product has been updated successfully.")
         redirect_to(action='view', id=id)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete") 
     def delete(self, id):
         """Delete the product
@@ -127,7 +126,7 @@ class ProductController(BaseController):
         c.product = Product.find_by_id(id)
         return render('/product/confirm_delete.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
     def _delete(self, id):
         c.product = Product.find_by_id(id)
@@ -140,7 +139,7 @@ class ProductController(BaseController):
         h.flash("Product has been deleted.")
         redirect_to('index')
 
-    @authorize(h.auth.Or(h.auth.has_organiser_role, h.auth.has_checkin_role))
+    @ActionProtector(Any(in_group('organiser'), in_group('checkin')))
     @jsonify
     def json(self):
         c.product_categories = ProductCategory.find_all()

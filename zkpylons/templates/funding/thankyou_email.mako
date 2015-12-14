@@ -1,5 +1,5 @@
 From: ${ c.config.get('event_name') } <${ c.config.get('contact_email') }>
-To: ${ c.person.firstname } ${ c.person.lastname } <${ c.person.email_address }>
+To: ${ c.person.fullname } <${ c.person.email_address }>
 Subject: Confirmation of your ${ c.funding.type.name } funding request for ${ c.config.get('event_name') }
 
 Dear ${ c.person.firstname },

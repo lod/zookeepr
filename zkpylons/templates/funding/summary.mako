@@ -53,15 +53,11 @@ function toggleDiv(id,flagit) {
 </ul>
 
 
-<% import re %>
 % for ft in c.funding_types:
     <% collection = getattr(c, '%s_collection' % ft.name) %>
     <% i = 1 %>
 
-    <% simple_title = re.compile('([^a-zA-Z0-9])').sub('', ft.name) %>
-
-<a name="${ simple_title }"></a>
-<h2>${ ft.name }s </h2>
+<h2 id="${ h.computer_title(ft.name) }">${ ft.name }s </h2>
 
 <table>
 <tr>
@@ -151,11 +147,8 @@ Funding Application Reviews - ${ parent.title() }
 <%
   menu = ''
 
-  import re
-
   for ft in c.funding_types:
-    simple_title = re.compile('([^a-zA-Z0-9])').sub('', ft.name)
-    menu += '<li><a href="#' + simple_title + '">' + ft.name + ' reviews</a></li>'
+	menu += '<li><a href="#%s">%s  reviews</a></li>' % (h.computer_title(ft.name), ft.name)
   return menu
 %>
 </%def>

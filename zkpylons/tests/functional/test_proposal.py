@@ -1,16 +1,214 @@
+import random
+
 from routes import url_for
 
 from zk.model.attachment import Attachment
 from zk.model.proposal import Proposal, ProposalType
 from zk.model.person import Person
 from zk.model.review import Review
+from zk.model.config import Config
 
+import webtest
 from webtest.forms import Upload
 
+from .crud_helper import CrudHelper
 from .fixtures import PersonFactory, ProposalFactory, AttachmentFactory, RoleFactory, StreamFactory, ProposalStatusFactory, ProposalTypeFactory, TravelAssistanceTypeFactory, AccommodationAssistanceTypeFactory, TargetAudienceFactory, ConfigFactory, CompletePersonFactory
 from .utils import do_login, isSignedIn
 
-class TestProposal(object):
+class TestProposal(CrudHelper):
+    def test_permissions(self, app, db_session):
+        # All: Must have an activated account
+        # index, attach, new, _new: No modifications
+        # view: must be organiser, reviewer or author
+        # edit, _edit, _attach, withdraw, _withdraw: must be organiser or author
+        # review, _review, review_index, summary: must be reviewer
+        # approve, _approve, latex: must be organiser
+
+        # organiser: approve, _approve, latex, edit, _edit, _attach, withdraw, _withdraw, view, index, attach, new, _new
+        # reviewer: review, _review, review_index, summary, view, index, attach, new, _new
+        # author: edit, _edit, _attach, withdraw, _withdraw, view, index, attach, new, _new
+        # activated: index, attach, new, _new
+
+        ProposalStatusFactory(name='Withdrawn') # Required by code
+
+        unactivated = CompletePersonFactory(activated=False)
+        activated   = CompletePersonFactory()
+        author      = CompletePersonFactory()
+        organiser   = CompletePersonFactory(roles=[CrudHelper._get_insert_role('organiser')])
+        reviewer    = CompletePersonFactory(roles=[CrudHelper._get_insert_role('reviewer')])
+
+        target = ProposalFactory(people=[author])
+        db_session.commit()
+
+        CrudHelper.test_permissions(self, app, db_session, target=target,
+                good_pers=activated, bad_pers=unactivated,
+                get_pages=('index', 'attach', 'new'),
+                post_pages=('new',)
+        )
+
+        CrudHelper.test_permissions(self, app, db_session, target=target,
+                good_pers=author, bad_pers=activated,
+                get_pages=('edit', 'withdraw', 'view'),
+                post_pages=('edit', 'attach', 'withdraw')
+        )
+
+        CrudHelper.test_permissions(self, app, db_session, target=target,
+                good_pers=reviewer, bad_pers=activated,
+                get_pages=('review', 'review_index', 'summary', 'view'),
+                post_pages=('review',)
+        )
+
+        CrudHelper.test_permissions(self, app, db_session, target=target,
+                good_pers=reviewer, bad_pers=organiser,
+                get_pages=('review', 'review_index', 'summary'),
+                post_pages=('review',)
+        )
+
+        CrudHelper.test_permissions(self, app, db_session,
+                target=target, good_pers=organiser, bad_pers=activated,
+                get_pages=('approve', 'latex', 'edit', 'withdraw', 'view'),
+                post_pages=('approve', 'attach', 'withdraw')
+        )
+
+
+    def test_new(self, app, db_session, smtplib):
+        # Call-for-papers must be open to submit a paper
+        Config.find_by_pk(('general','cfp_status')).value = 'open'
+
+        # Need a Complete Person to submit a paper - must have a 'finished' signup
+        user = CompletePersonFactory(roles=[CrudHelper._get_insert_role('organiser')])
+
+        audiences = [TargetAudienceFactory() for i in range(5)]
+        chosen_audience = random.choice(audiences)
+
+        types = [ProposalTypeFactory() for i in range(5)]
+        chosen_type = random.choice(types)
+
+        travels = TravelAssistanceTypeFactory()
+        accm = AccommodationAssistanceTypeFactory()
+        stat = ProposalStatusFactory(name = 'Pending Review') # Required by code
+
+        db_session.commit()
+
+        expected = {
+            'title'    : 'One day I was walking by the beach',
+            'abstract' : 'When I found a sea shell by the sea shore',
+            'abstract_video_url' : 'http://my.ted.talk/',
+            'url'        : "http://come.bucket.nantucket",
+        }
+        # TODO: urls get http prepended
+
+        def extra_form_check(f):
+            assert 'person.bio' in f.fields
+            assert 'person.mobile' in f.fields
+            assert 'person.experience' in f.fields
+            assert 'attachment' in f.fields
+
+
+        def extra_form_set(f):
+            f['person.bio'] = "I was once a man going to nantucket"
+            f['person.mobile'] = "When I came upon a bucket"
+            f['person.experience'] = "So I just kinda when fuckit"
+            f['attachment'] = "testfile.txt", b'Really require an attachment?', "text/dummy"
+
+            # Can't pass in integers for some reason, I think it is related to the attachment
+            f['proposal.type']                     = str(chosen_type.id)
+            f['proposal.audience']                 = str(chosen_audience.id)
+            f['proposal.travel_assistance']        = str(travels.id)
+            f['proposal.accommodation_assistance'] = str(accm.id)
+
+        def extra_data_check(new):
+            assert len(new.people) == 1
+            author = new.people[0]
+            assert author.id == user.id
+            assert author.bio == "I was once a man going to nantucket"
+            assert author.mobile == "When I came upon a bucket"
+            assert author.experience == "So I just kinda when fuckit"
+
+            assert len(new.attachments) == 1
+            attach = new.attachments[0]
+            assert attach.proposal_id == new.id
+            assert attach.filename == "testfile.txt"
+            #assert attach.content_type == "text/dummy" # Always set to a constant, unsure why
+            assert attach.content_type == "application/octet-stream"
+            assert attach.content == b'Really require an attachment?'
+
+            assert new.type.id == chosen_type.id
+            assert new.audience.id == chosen_audience.id
+            assert new.travel_assistance.id == travels.id
+            assert new.accommodation_assistance.id == accm.id
+
+
+        # TODO: There is weirdness where DB table requires travel_assistance_type_id
+        #       But form may not prompt for travel_assistance
+        #       Same for accommodation_assistance_type_id
+        #       There are odd hidden fields which I think are meant to handle it
+
+        CrudHelper.test_new(self, app, db_session, user=user, title="Submit a Proposal", extra_form_check=extra_form_check, extra_form_set=extra_form_set, extra_data_check=extra_data_check, data=expected)
+
+    def test_edit(self, app, db_session):
+        user = CompletePersonFactory(roles=[CrudHelper._get_insert_role('organiser')])
+
+        audiences = [TargetAudienceFactory() for i in range(5)]
+        chosen_audience = random.choice(audiences)
+
+        types = [ProposalTypeFactory() for i in range(5)]
+        chosen_type = random.choice(types)
+
+        travels = TravelAssistanceTypeFactory()
+        accm = AccommodationAssistanceTypeFactory()
+        stat = ProposalStatusFactory(name = 'Pending Review') # Required by code
+
+        target = ProposalFactory(people=[user])
+        db_session.commit()
+
+        print "TARGET", target, target.people
+
+        expected = {
+            'title'    : 'One day I was walking by the beach',
+            'abstract' : 'When I found a sea shell by the sea shore',
+            'audience' : chosen_audience.id,
+            #'bio'      : "I was once a man going to nantucket",
+            #'mobile'   : "When I came upon a bucket",
+            #'experience' : "So I just kinda when fuckit",
+            'abstract_video_url' : 'http://my.ted.talk/',
+            'url'        : "http://come.bucket.nantucket",
+            'type'       : chosen_type.id,
+            'audience'   : chosen_audience.id,
+            'travel_assistance' : travels.id,
+            'accommodation_assistance' : accm.id,
+        }
+        # TODO: urls get http prepended
+
+        def extra_form_set(f):
+            f['person.bio'] = "I was once a man going to nantucket"
+            f['person.mobile'] = "When I came upon a bucket"
+            f['person.experience'] = "So I just kinda when fuckit"
+            #f['proposal.url'] = "http://me.id.au"
+            #f['proposal.abstract_video_url'] = "https://asta.video.go/"
+
+        # TODO: Data check
+
+        CrudHelper.test_edit(self, app, db_session, user=user, target=target, new_values=expected, extra_form_set=extra_form_set)
+
+    def test_view(self, app, db_session):
+        target = ProposalFactory();
+        db_session.commit()
+        CrudHelper.test_view(self, app, db_session, target=target, title=target.title)
+
+    def test_index(self, app, db_session):
+        # Index lists the submitters proposals, regardless of permissions etc.
+
+        org_pers = CompletePersonFactory(roles=[CrudHelper._get_insert_role('organiser')])
+        rows = [ProposalFactory(people=[org_pers]) for i in range(10)]
+        db_session.commit()
+        # Note: Long abstracts will be truncated, not an issue with our test data
+        entries = { s.id : [s.title, s.type.name, s.abstract, s.url, org_pers.fullname] for s in rows }
+
+        CrudHelper.test_index(self, app, db_session, title="My Proposals", user=org_pers, entries=entries, entry_actions=('view', 'withdraw'))
+
+    def test_delete(self):
+        pass # No delete functionality, there is a withdraw but it doesn't remove the entry from the DB
 
     def test_proposal_view_lockdown(self, app, db_session):
         prop = ProposalFactory()
@@ -90,7 +288,7 @@ class TestProposal(object):
         f['person.mobile']     = "NONE"
         f['person.bio']        = "Jim isn't real Dave, he never was"
         resp = f.submit()
-        resp.status_code = 302 # Failure suggests form didn't submit cleanly
+        assert resp.status_code == 302 # Failure suggests form didn't submit cleanly
 
         pers_id = pers.id
         db_session.expunge_all()
@@ -222,7 +420,6 @@ class TestProposal(object):
         atts = Attachment.find_all();
         assert atts == []
 
-from zk.model.config import Config
 
 class TestCFPStates(object):
 
@@ -272,55 +469,58 @@ class TestAttachment(object):
         att3 = AttachmentFactory(proposal=prop)
         att4 = AttachmentFactory(proposal=prop)
         db_session.commit()
+
+        def try_ops(user, attachment, status):
+            if user is None:
+                if isSignedIn(app):
+                    app.get('/person/signout')
+            else:
+                do_login(app, user)
+
+            def try_req(method, action, status = 200):
+                environ = {} # = {'REMOTE_USER': str(user.email_address)} if user is not None else {}
+
+                req = webtest.TestRequest.blank(url_for(controller='attachment', action=action, id=attachment.id), method=method)
+
+                if status == 401:
+                    # 401 - Require login, can be a 302 redirecting to the login page
+                    resp = app.do_request(req, status="*")
+                    if resp.status_code == 401:
+                        pass
+                    elif resp.status_code == 302 and "/person/signin" in resp.location:
+                        pass
+                    else:
+                        raise AppError("Bad response: %s (not %s)", resp.status, status)
+                else:
+                    resp = app.do_request(req, status=status)
+                return resp
+
+            resp = try_req('GET', 'view', status if status else 200)
+            if status is None: assert resp.content_type == "application/octet-stream"
+
+            resp = try_req('GET', 'delete', status if status else 200)
+            if status is None: assert "Are you sure you want to delete this attachment" in unicode(resp.body, 'utf-8')
+
+            resp = try_req('POST', 'delete', status if status else 302)
+
         
         # we're logged in and this is ours
-        do_login(app, pers)
-        resp = app.get(url_for(controller='attachment', action='view', id=att1.id))
-        assert resp.content_type == "application/octet-stream"
-        resp = app.get(url_for(controller='attachment', action='delete', id=att1.id))
-        assert "Are you sure you want to delete this attachment" in unicode(resp.body, 'utf-8')
-        resp = app.post(url_for(controller='attachment', action='delete', id=att1.id), status=302)
+        try_ops(pers, att1, None)
 
         # this is also ours
-        do_login(app, sec_pers)
-        resp = app.get(url_for(controller='attachment', action='view', id=att2.id))
-        assert resp.content_type == "application/octet-stream"
-        resp = app.get(url_for(controller='attachment', action='delete', id=att2.id))
-        assert "Are you sure you want to delete this attachment" in unicode(resp.body, 'utf-8')
-        resp = app.post(url_for(controller='attachment', action='delete', id=att2.id), status=302)
+        try_ops(sec_pers, att2, None)
 
         # we're organiser/admin
-        do_login(app, org_pers)
-        resp = app.get(url_for(controller='attachment', action='view', id=att3.id))
-        assert resp.content_type == "application/octet-stream"
-        resp = app.get(url_for(controller='attachment', action='delete', id=att3.id))
-        assert "Are you sure you want to delete this attachment" in unicode(resp.body, 'utf-8')
-        resp = app.post(url_for(controller='attachment', action='delete', id=att3.id), status=302)
+        try_ops(org_pers, att3, None)
 
         # we're a reviewer
-        do_login(app, rev_pers)
-        resp = app.get(url_for(controller='attachment', action='view', id=att4.id), status=403)
-        assert resp.content_type == "text/html"
-        resp = app.get(url_for(controller='attachment', action='delete', id=att4.id), status=403)
-        resp = app.post(url_for(controller='attachment', action='delete', id=att4.id), status=403)
+        try_ops(rev_pers, att4, 403)
 
         # we're logged in and this isn't ours
-        do_login(app, other_pers)
-        resp = app.get(url_for(controller='attachment', action='view', id=att4.id), status=403)
-        assert resp.content_type == "text/html"
-        resp = app.get(url_for(controller='attachment', action='delete', id=att4.id), status=403)
-        resp = app.post(url_for(controller='attachment', action='delete', id=att4.id), status=403)
+        try_ops(other_pers, att4, 403)
 
         # we're not logged in
-        app.get('/person/signout')
-        assert not isSignedIn(app)
-        resp = app.get(url_for(controller='attachment', action='view', id=att4.id))#, status=404)
-        assert resp.content_type == "text/html"
-        assert "User doesn't have any of the specified roles" in unicode(resp.body, 'utf-8')
-        resp = app.get(url_for(controller='attachment', action='delete', id=att4.id))
-        assert "Don't have an account?" in unicode(resp.body, 'utf-8')
-        resp = app.post(url_for(controller='attachment', action='delete', id=att4.id))
-        assert "Don't have an account?" in unicode(resp.body, 'utf-8')
+        try_ops(None, att4, 401)
 
         db_session.expunge_all()
         atts = Attachment.find_all();

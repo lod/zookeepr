@@ -1,7 +1,7 @@
 <%inherit file="/base.mako" />
 <% c.signed_in_person = h.signed_in_person() %>
 <%def name="toolbox_extra()">
-% if h.auth.authorized(h.auth.has_organiser_role) or c.funding_editing == 'open' and c.signed_in_person == c.funding.person:
+% if h.auth.has_group('organiser') or c.funding_editing == 'open' and c.signed_in_person == c.funding.person:
   <li>${ h.link_to('Edit Funding Application', url=h.url_for(controller='funding', action='edit',id=c.funding.id)) }</li>
 % endif 
 </%def>
@@ -27,7 +27,7 @@
 
 <hr>
 <ul>
-% if h.auth.authorized(h.auth.has_organiser_role) or c.funding_editing == 'open' and c.signed_in_person == c.funding.person:
+% if h.auth.has_group('organiser') or c.funding_editing == 'open' and c.signed_in_person == c.funding.person:
   <li>${ h.link_to('Edit Funding Application', url=h.url_for(controller='funding', action='edit',id=c.funding.id)) }</li>
 % endif 
 

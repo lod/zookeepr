@@ -21,7 +21,7 @@
         <td>
 % if not c.person.activated:
           ${ c.person.email_address }
-%   if h.auth.authorized(h.auth.has_organiser_role):
+%   if h.auth.has_group('organiser'):
           (${ h.link_to('mark as verified', '/person/confirm/' + c.person.url_hash) })
 %   else:
           (not verified)
@@ -31,7 +31,7 @@
 % endif
         </td>
     </tr>
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
     <tr>
         <td><b>Password:</b></td>
         <td>
@@ -42,7 +42,7 @@
         </td>
     </tr>
 % endif
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
     <tr>
         <td><b>Badge printed:</b></td>
         <td>
@@ -62,7 +62,7 @@
     </tr>
 %   endfor
 % endif
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
     <tr>
       <td valign="top"><b>Roles:</b></td>
       <td>
@@ -153,7 +153,7 @@
     <td>${ h.truncate(s.abstract) | n}</td>
     <td>${ s.proposer_status }</td>
     <td>
-%       if c.proposal_editing == 'open' or h.auth.authorized(h.auth.has_late_submitter_role):
+%       if c.proposal_editing == 'open' or h.auth.has_group('late_submitter'):
       ${ h.link_to("edit", url=h.url_for(controller='proposal', action='edit', id=s.id)) }
 %       endif
 %       if not (s.accepted or s.withdrawn or s.declined):
@@ -210,7 +210,7 @@
 %   endif
 % endif
 
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 <h2>Registration</h2>
 
 %   if c.person.registration is None:
@@ -297,10 +297,10 @@ This person hasn't registered yet.
 
 <hr>
 
-% if h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(c.person.id), h.auth.has_organiser_role)):
+% if h.auth.has_group('organiser') or h.auth.get_person.id == c.person.id:
 ${ toolbox.make_link('Edit', url=h.url_for(action='edit',id=c.person.id)) }
 % endif
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 ${ toolbox.make_link('Edit Person Roles', url=h.url_for(action='roles',id=c.person.id)) }
 % endif
 

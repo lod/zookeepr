@@ -13,10 +13,8 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, ExistingPersonValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
 from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ActionProtector, ControllerProtector, in_group, not_anonymous
 
 from zkpylons.model import meta
 from zkpylons.model import Voucher, VoucherProduct, ProductCategory, Product
@@ -52,9 +50,9 @@ class NewVoucherSchema(BaseSchema):
 
 new_schema = NewVoucherSchema()
 
+@ControllerProtector(not_anonymous())
 class VoucherController(BaseController):
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.is_valid_user)
     def __before__(self, **kwargs):
         c.product_categories = ProductCategory.find_nonfree()
         self._generate_product_schema()
@@ -78,8 +76,8 @@ class VoucherController(BaseController):
                     pschema.add_field('product_' + str(product.id) + '_percentage', validators.Int(min=0, max=100, if_empty=0))
         new_schema.add_field('products', pschema)
 
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new")
-    @authorize(h.auth.has_organiser_role)
     def new(self):
         defaults = {
             'voucher.count': '1',
@@ -88,7 +86,6 @@ class VoucherController(BaseController):
         return htmlfill.render(form, defaults)
 
     @validate(schema=new_schema, form='new', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_organiser_role)
     def _new(self):
         results = self.form_result['voucher']
         count = results['count'] # Number of voucher codes to generate
@@ -134,7 +131,7 @@ class VoucherController(BaseController):
         return redirect_to(controller='voucher', action='index')
 
     def index(self):
-        c.admin = h.auth.authorized(h.auth.has_organiser_role)
+        c.admin = in_group('organiser')
         if c.admin:
             c.vouchers = Voucher.find_all()
         else:
@@ -142,8 +139,8 @@ class VoucherController(BaseController):
 
         return render('/voucher/list.mako')
 
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete")
-    @authorize(h.auth.has_organiser_role)
     def delete(self, id):
         """Delete the voucher
 
@@ -155,7 +152,6 @@ class VoucherController(BaseController):
         return render('/voucher/confirm_delete.mako')
 
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_organiser_role)
     def _delete(self, id):
         c.voucher = Voucher.find_by_id(id)
 

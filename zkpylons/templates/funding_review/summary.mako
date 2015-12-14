@@ -19,7 +19,7 @@ for r in c.review_collection:
 <tr>
 <th>Reviewer</th>
 <th>Number of Funding Reviews</th>
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 <th>Avg Score</th>
 % endif
 </tr>
@@ -33,7 +33,7 @@ ${ reviewer.fullname }
 ${ review_summary[reviewer]['num_reviews'] }
 </td>
 
-%   if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 <td>
 <% avg = review_summary[reviewer]['total_score']*1.0/review_summary[reviewer]['num_reviews'] %>
 ${ "%#.*f" % (2, avg) }

@@ -13,8 +13,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, FulfilmentTypeValidator, ExistingPersonValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.lib.mail import email
 
@@ -37,10 +36,10 @@ class EditFulfilmentGroupSchema(BaseSchema):
     fulfilment_group = FulfilmentGroupSchema()
     pre_validators = [NestedVariables]
 
+@ControllerProtector(in_group('organiser'))
 class FulfilmentGroupController(BaseController):
 
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.has_organiser_role)
     def __before__(self, **kwargs):
         c.can_edit = True
         c.fulfilment_types = FulfilmentType.find_all()

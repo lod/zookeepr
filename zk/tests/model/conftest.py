@@ -19,7 +19,7 @@ ini.read("test.ini")
 def app_config():
     config = testing.setUp()
     # Logging displayed by passing -s to pytest
-    #logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+    # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
     yield config
     testing.tearDown()
 

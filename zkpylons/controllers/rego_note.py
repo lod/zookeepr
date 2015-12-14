@@ -13,10 +13,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, ExistingRegistrationValidator, ExistingPersonValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
-from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.model import meta
 from zkpylons.model.rego_note import RegoNote
@@ -37,9 +34,9 @@ class UpdateNoteSchema(BaseSchema):
     rego_note = RegoNoteSchema()
     pre_validators = [NestedVariables]
 
+@ControllerProtector(in_group('organiser'))
 class RegoNoteController(BaseController):
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.has_organiser_role)
     def __before__(self, **kwargs):
         pass
 

@@ -21,7 +21,7 @@ from zkpylons.lib.validators import ProDinner, PPDetails, PPChildrenAdult
 
 import zkpylons.lib.helpers as h
 
-from zkpylons.lib.auth import ActionProtector, in_group, not_anonymous, is_activated
+from zkpylons.lib.auth import ActionProtector, in_group, not_anonymous, is_activated, Predicate, has_group
 
 from zkpylons.lib.mail import email
 
@@ -38,6 +38,20 @@ from zkpylons.controllers.person import PersonSchema
 log = logging.getLogger(__name__)
 
 import datetime
+
+class is_owner(Predicate):
+    message = "Owner of registration"
+
+    def evaluate(self, environ, credentials):
+        """ Check if registration's person matches logged in user """
+        person_email = environ.get('REMOTE_USER')
+        rego_id = environ['pylons.routes_dict'].get('id')
+        if person_email is None or rego_id is None: self.unmet()
+
+        rego = Registration.find_by_id(rego_id, abort_404 = False)
+
+        if rego is None or rego.person.email_address != person_email:
+            self.unmet()
 
 class CheckAccomDates(validators.FormValidator):
     def __init__(self, checkin_name, checkout_name):
@@ -293,6 +307,8 @@ class RegistrationController(BaseController):
         h.check_for_incomplete_profile(c.signed_in_person)
 
         if c.signed_in_person and c.signed_in_person.registration:
+            # Need to feed id back into the environment so that the ActionProtector can test it
+            request.environ['pylons.routes_dict']['id'] = c.signed_in_person.registration.id
             redirect_to(action='edit', id=c.signed_in_person.registration.id)
 
         fields = dict(request.GET)
@@ -316,7 +332,7 @@ class RegistrationController(BaseController):
                 c.special_offer = c.signed_in_person.special_registration[0].special_offer
 
         if c.special_offer is None and Config.get('conference_status') != 'open':
-            if not h.auth.authorized(h.auth.has_organiser_role):
+            if not has_group('organiser'):
                 redirect_to(action='status')
             else:
                 # User is an organiser, so if the status is also 'debug' then they can register
@@ -360,7 +376,7 @@ class RegistrationController(BaseController):
     @validate(schema=edit_schema, form='new', post_only=True, on_get=True, variable_decode=True)
     def _new(self):
         if c.signed_in_person and c.signed_in_person.registration:
-            redirect_to(action='_edit', id=c.signed_in_person.registration.id)
+            return self._process_edit(id=c.signed_in_person.registration.id)
 
         result = self.form_result
 
@@ -371,7 +387,7 @@ class RegistrationController(BaseController):
                 c.special_offer = None
 
         if c.special_offer is None and Config.get('conference_status') != 'open':
-            if not h.auth.authorized(h.auth.has_organiser_role):
+            if not has_group('organiser'):
                 redirect_to(action='status')
             else:
                 # User is an organiser, so if the status is also 'debug' then they can register
@@ -402,24 +418,23 @@ class RegistrationController(BaseController):
             c.person.email_address,
             render('registration/response.mako'))
 
-        self.pay(c.registration.id, quiet=1)
+        self._process_pay(c.registration.id, quiet=1)
 
         h.flash("Thank you for your registration!")
         if not c.person.paid():
             h.flash("To complete the registration process, please pay your invoice.")
         redirect_to(action='status')
 
+    @ActionProtector(h.auth.Any(is_owner(), in_group('organiser')))
     @dispatch_on(POST="_edit")
     def edit(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zookeepr_registration(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
         # If we're an organiser, then don't check payment status.
-        if not h.auth.authorized(h.auth.has_organiser_role):
+        if not has_group('organiser'):
             able, response = self._able_to_edit()
             if not able:
                 c.error = response
                 return render("/registration/error.mako")
+
         c.registration = Registration.find_by_id(id)
         defaults = {}
         defaults.update(h.object_to_defaults(c.registration, 'registration'))
@@ -483,17 +498,18 @@ class RegistrationController(BaseController):
 
     @validate(schema=edit_schema, form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zookeepr_registration(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
+        return self._process_edit(id=id)
 
+    # Because new() can in some circumstances want to trigger the same processing as edit
+    # but we can't just call edit, because it won't pass the ActionProtector
+    # So we spin off a third function that can be called from each
+    def _process_edit(self, id):
         c.registration = Registration.find_by_id(id)
         result = self.form_result
         c.special_offer = None
         self.save_details(result)
 
-        self.pay(c.registration.id, quiet=1)
+        self._process_pay(c.registration.id, quiet=1)
 
         h.flash("Thank you for updating your registration!")
         if not c.person.paid():
@@ -582,29 +598,22 @@ class RegistrationController(BaseController):
 
         meta.Session.commit()
 
-    def status(self, id=0):
-        if int(id) == 0:
-            if h.signed_in_person() and h.signed_in_person().registration:
-                c.registration = h.signed_in_person().registration
-            else:
-                c.registration = None
+    def status(self, id=None):
+        if has_group('organiser') and id is not None:
+            c.registration = Registration.find_by_id(id, abort_404 = True)
+            c.person = c.registration.person
         else:
-            if not h.auth.authorized(h.auth.Or(h.auth.is_same_zookeepr_registration(id), h.auth.has_organiser_role)):
-                # Raise a no_auth error
-                h.auth.no_role()
-            c.registration = Registration.find_by_id(id, abort_404 = False)
-
-        if c.registration is None:
-          c.person = h.signed_in_person()
-        else:
-          c.person = c.registration.person
+            c.person = h.signed_in_person()
+            c.registration = c.person.registration
 
         return render("/registration/status.mako")
 
-    def pay(self, id, quiet=0):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zookeepr_registration(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
+    @ActionProtector(h.auth.Any(is_owner(), in_group('organiser')))
+    def pay(self, id):
+        return self._process_pay(id=id, quiet=0)
+
+    # Spin off function to avoid ActionProtector for internal calls
+    def _process_pay(self, id, quiet=0):
         registration = Registration.find_by_id(id)
 
         # Checks all existing invoices and invalidates them if a product is not available
@@ -1120,12 +1129,8 @@ class RegistrationController(BaseController):
         disallowed_chars = re.compile(r'(\n|\r\n|\t)')
         return disallowed_chars.sub(' ', h.escape(field.strip()))
 
+    @ActionProtector(h.auth.Any(is_owner(), in_group('organiser')))
     def view(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zookeepr_registration(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.registration = Registration.find_by_id(id)
         return render('/registration/view.mako')
 

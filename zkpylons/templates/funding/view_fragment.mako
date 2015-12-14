@@ -10,7 +10,7 @@ at
 ${ c.funding.creation_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") | n}<br />
 (last updated at ${ c.funding.last_modification_timestamp.strftime("%Y-%m-%d&nbsp;%H:%M") | n})
 
-%   if h.url_for().endswith('review') is True and ('funding_reviewer' in [x.name for x in c.signed_in_person.roles]) or ('organiser' in [x.name for x in c.signed_in_person.roles]):
+%   if h.url_for().endswith('review') is True and (h.auth.has_group('funding_reviewer') or h.auth.has_group('organiser')):
 <p class="submitted">
 ${ c.funding.person.fullname } &lt;${ c.funding.person.email_address }&gt;
 %if c.funding.person.url and len(c.funding.person.url) > 0:
@@ -135,7 +135,7 @@ ${ h.link_to('delete', url=h.url_for(controller='funding_attachment', action='de
   <tr><td>No attachments</td></tr>
 </table>
 % endif
-% if c.signed_in_person == c.funding.person or h.auth.authorized(h.auth.has_organiser_role):
+% if c.signed_in_person == c.funding.person or h.auth.has_group('organiser'):
 <p>
 ${ h.link_to('Add an attachment', url=h.url_for(action='attach')) }
 </p>

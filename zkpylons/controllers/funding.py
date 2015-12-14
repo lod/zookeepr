@@ -1,4 +1,7 @@
+import random
 import logging
+
+from collections import namedtuple
 
 from pylons import request, response, session, tmpl_context as c
 from zkpylons.lib.helpers import redirect_to
@@ -17,8 +20,7 @@ from zkpylons.lib.validators import FundingStatusValidator
 from zkpylons.lib.validators import FundingReviewSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, ControllerProtector, in_group, is_activated, Predicate, has_group
 
 from zkpylons.lib.mail import email
 
@@ -65,14 +67,31 @@ class ApproveSchema(BaseSchema):
     funding = ForEach(FundingValidator())
     status = ForEach(FundingStatusValidator())
 
+class is_submitter(Predicate):
+    message = "funding submitter"
+
+    def evaluate(self, environ, credentials):
+        person_email = environ.get('REMOTE_USER')
+        funding_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or funding_id is None:
+            self.unmet()
+
+        funding = Funding.find_by_id(funding_id, abort_404=False)
+        if funding is None:
+            self.unmet()
+
+        if funding.person.email_address != person_email:
+            self.unmet()
+
+
+@ControllerProtector(is_activated())
 class FundingController(BaseController):
 
     def __init__(self, *args):
         c.funding_status = Config.get('funding_status')
         c.funding_editing = Config.get('funding_editing')
 
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
     def __before__(self, **kwargs):
         c.funding_types = FundingType.find_all()
         c.form_fields = {
@@ -85,7 +104,7 @@ class FundingController(BaseController):
     @dispatch_on(POST="_new")
     def new(self):
         if c.funding_status == 'closed':
-           if not h.auth.authorized(h.auth.has_late_submitter_role):
+            if not has_group('late_submitter'):
               return render("funding/closed.mako")
         elif c.funding_status == 'not_open':
            return render("funding/not_open.mako")
@@ -101,7 +120,8 @@ class FundingController(BaseController):
     @validate(schema=NewFundingSchema(), form='new', post_only=True, on_get=True, variable_decode=True)
     def _new(self):
         if c.funding_status == 'closed':
-            return render("funding/closed.mako")
+            if not has_group('late_submitter'):
+                return render("funding/closed.mako")
         elif c.funding_status == 'not_open':
             return render("funding/not_open.mako")
 
@@ -140,20 +160,15 @@ class FundingController(BaseController):
         h.flash("Funding submitted!")
         return redirect_to(controller='funding', action="index", id=None)
 
+    @ActionProtector(h.auth.Any(is_submitter(), in_group('organiser')))
     @dispatch_on(POST="_attach")
     def attach(self, id):
         return render('funding/attach.mako')
-
 
     @validate(schema=NewAttachmentSchema(), form='attach', post_only=True, on_get=True, variable_decode=True)
     def _attach(self, id):
         """Attach a file to the funding.
         """
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.funding = Funding.find_by_id(id)
 
         attachment_results = self.form_result['attachment']
@@ -167,27 +182,21 @@ class FundingController(BaseController):
 
         return redirect_to(action='view', id=id)
 
+    @ActionProtector(h.auth.Any(is_submitter(), in_group('organiser'), in_group('funding_reviewer')))
     def view(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(id), h.auth.has_organiser_role, h.auth.has_funding_reviewer_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.funding = Funding.find_by_id(id)
-
         return render('funding/view.mako')
 
+    @ActionProtector(h.auth.Any(is_submitter(), in_group('organiser')))
     @dispatch_on(POST="_edit")
     def edit(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        if not h.auth.authorized(h.auth.has_organiser_role):
+        if not has_group('organiser'):
             if c.funding_editing == 'closed':
                 return render("funding/editing_closed.mako")
             elif c.funding_editing == 'not_open':
+                # TODO: Is this really a valid state,
+                #       If an entry exists should we allow it to be edited?
+                #       The 'not open' is obviously a bit dodgy if the entry exists.
                 return render("funding/editing_not_open.mako")
 
         c.funding = Funding.find_by_id(id)
@@ -208,12 +217,7 @@ class FundingController(BaseController):
 
     @validate(schema=ExistingFundingSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
-        # We need to recheck auth in here so we can pass in the id
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        if not h.auth.authorized(h.auth.has_organiser_role):
+        if not has_group('organiser'):
             if c.funding_editing == 'closed':
                 return render("funding/editing_closed.mako")
             elif c.funding_editing == 'not_open':
@@ -239,8 +243,8 @@ class FundingController(BaseController):
         c.person = h.signed_in_person()
         return render('/funding/list.mako')
 
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_approve")
-    @authorize(h.auth.has_organiser_role)
     def approve(self):
         c.highlight = set()
         c.requests = Funding.find_all()
@@ -248,11 +252,11 @@ class FundingController(BaseController):
         return render("funding/approve.mako")
 
     @validate(schema=ApproveSchema(), form='approve', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_organiser_role)
     def _approve(self):
         c.highlight = set()
         requests = self.form_result['funding']
         statuses = self.form_result['status']
+        print "STATUSES", statuses
         for request, status in zip(requests, statuses):
             if status is not None:
                 c.highlight.add(request.id)
@@ -263,21 +267,14 @@ class FundingController(BaseController):
         c.statuses = FundingStatus.find_all()
         return render("funding/approve.mako")
 
+    @ActionProtector(h.auth.Any(is_submitter(), in_group('organiser')))
     @dispatch_on(POST="_withdraw")
     def withdraw(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.funding = Funding.find_by_id(id)
         return render("/funding/withdraw.mako")
 
     @validate(schema=ApproveSchema(), form='withdraw', post_only=True, on_get=True, variable_decode=True)
     def _withdraw(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.funding = Funding.find_by_id(id)
         status = FundingStatus.find_by_name('Withdrawn')
         c.funding.status = status
@@ -292,12 +289,8 @@ class FundingController(BaseController):
         h.flash("Funding withdrawn. The organisers have been notified.")
         return redirect_to(controller='funding', action="index", id=None)
 
-    def _is_reviewer(self):
-        if not h.signed_in_person() is c.review.reviewer:
-            h.auth.no_role()
-
+    @ActionProtector(in_group('funding_reviewer'))
     @dispatch_on(POST="_review")
-    @authorize(h.auth.has_funding_reviewer_role)
     def review(self, id):
         c.funding = Funding.find_by_id(id)
         c.signed_in_person = h.signed_in_person()
@@ -307,7 +300,6 @@ class FundingController(BaseController):
         return render('/funding/review.mako')
 
     @validate(schema=NewFundingReviewSchema(), form='review', post_only=True, on_get=True, variable_decode=True)
-    @authorize(h.auth.has_funding_reviewer_role)
     def _review(self, id):
         """Review a funding application.
         """
@@ -337,22 +329,29 @@ class FundingController(BaseController):
 
         h.flash("No more funding applications to review")
 
-        return redirect_to(action='review_index')
+        return redirect_to(action='review_index', id=None)
 
-    @authorize(h.auth.has_funding_reviewer_role)
+    @ActionProtector(in_group('funding_reviewer'))
     def review_index(self):
-        c.person = h.signed_in_person()
-        c.num_proposals = 0
-        reviewer_role = Role.find_by_name('funding_reviewer')
-        c.num_reviewers = len(reviewer_role.people)
+
+        CatStruct = namedtuple('Category', 'type min_reviews collection')
+        c.categories = []
         for ft in c.funding_types:
-            stuff = Funding.find_all_by_funding_type_id(ft.id, include_withdrawn=False)
-            c.num_proposals += len(stuff)
-            setattr(c, '%s_collection' % ft.name, stuff)
+            collection = Funding.find_all_by_funding_type_id(ft.id, include_withdrawn=False)
+
+            # Filter out entries that we have already reviewed
+            collection = filter(lambda x: h.signed_in_person() not in [ r.reviewer for r in x.reviews ], collection)
+
+            # Shuffle then sort means that entries with same review count are shuffled
+            random.shuffle(collection)
+            collection.sort(cmp = lambda x, y: cmp(len(x.reviews), len(y.reviews)))
+
+            min_reviews = min([ len(f.reviews) for f in collection ] or [0])
+            c.categories.append(CatStruct(collection=collection, min_reviews=min_reviews, type=ft))
 
         return render('funding/list_review.mako')
 
-    @authorize(h.auth.has_funding_reviewer_role)
+    @ActionProtector(in_group('funding_reviewer'))
     def summary(self):
         for ft in c.funding_types:
             stuff = Funding.find_all_by_funding_type_id(ft.id, include_withdrawn=False)

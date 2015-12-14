@@ -12,6 +12,7 @@
 %   for area in category['questions']:
 <%    code = area['name'].replace(' ', '_').replace('.', '_') %>
         <tr class="${ h.cycle('even', 'odd') }">
+		  ## TODO: This is going to get real messy if two questions ever have the same name
           <td valign="middle" align="center">${ h.checkbox('volunteer.areas.' + code) }</td>
           <td>${ area['name'] }
 %     if area.has_key('description'):

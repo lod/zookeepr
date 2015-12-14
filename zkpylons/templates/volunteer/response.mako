@@ -1,5 +1,5 @@
 Subject: Regarding your volunteer application for ${ c.config.get('event_name') }
-To: ${ c.person.firstname } ${ c.person.lastname } <${ c.person.email_address }>
+To: ${ c.person.fullname } <${ c.person.email_address }>
 
 Dear ${ c.person.firstname },
 

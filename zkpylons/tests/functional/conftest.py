@@ -103,6 +103,10 @@ def db_session():
     engine.execute("drop schema if exists public cascade")
     engine.execute("create schema public")
 
+    # TODO: We can get into a broken state, typically by cancelling a test where the config
+    #       table doesn't exist. We depend on it to do something...., before creation.
+    #       Workaround fix is to go in to psql manually and run:
+    #           CREATE TABLE config (category TEXT, key TEXT, description TEXT, value TEXT);
     zkmeta.Base.metadata.create_all(engine)
 
     dsess.configure(engine)

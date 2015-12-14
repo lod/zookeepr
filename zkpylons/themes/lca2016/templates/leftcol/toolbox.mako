@@ -19,7 +19,7 @@
 % if h.signed_in_person():
     <li class="sidebar-brand">${ h.signed_in_person().firstname }'s Profile</li>
 ${ parent.toolbox_extra() }
-%   if c.config.get("cfp_status") == 'open' or h.auth.authorized(h.auth.has_late_submitter_role):
+%   if c.config.get("cfp_status") == 'open' or h.auth.has_group('late_submitter'):
       ${ make_link('Submit a proposal', h.url_for(controller='proposal', action='new', id=None)) }
 %   endif
 %   if c.config.get("cfmini_status") == 'open':
@@ -46,7 +46,7 @@ ${ parent.toolbox_extra() }
       ${ make_link('Sign in', "/person/signin") }
       ${ make_link('Create an account', "/person/new") }
 % endif
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 <li class="sidebar-brand">Zookeepr Administration</li>
       ${ make_link('Admin', h.url_for(controller='admin')) }
       ${ make_link('Lookup', h.url_for(controller='admin', action='lookup')) }
@@ -60,7 +60,7 @@ ${ parent.toolbox_extra() }
 %   endif
 ${ parent.toolbox_extra_admin() }
 % endif
-% if h.auth.authorized(h.auth.has_reviewer_role):
+% if h.auth.has_group('reviewer'):
 <li class="sidebar-brand">Paper Reviewer</li>
 ${ parent.toolbox_extra_reviewer() }
       ${ make_link('How to review', '/help/review') }
@@ -77,7 +77,7 @@ ${ parent.toolbox_extra_reviewer() }
         ${ make_link('number of reviewers', h.url_for(controller='admin', action='proposals_by_number_of_reviewers', id=None)) }
         ${ make_link('submission date', h.url_for(controller='admin', action='proposals_by_date', id=None)) }
 % endif
-% if h.auth.authorized(h.auth.has_funding_reviewer_role):
+% if h.auth.has_group('funding_reviewer'):
     <li class="sidebar-brand">Funding Reviewer</li>
 ${ parent.toolbox_extra_funding_reviewer() }
       ${ make_link('How to review', '/help/funding_review') }

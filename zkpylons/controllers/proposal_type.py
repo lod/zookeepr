@@ -12,10 +12,7 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, ProductValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
-from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.model import meta, ProposalType
 
@@ -33,10 +30,8 @@ class EditProposalTypeSchema(BaseSchema):
     proposal_type = ProposalTypeSchema()
     pre_validators = [NestedVariables]
 
+@ControllerProtector(in_group('organiser'))
 class ProposalTypeController(BaseController):
-    @authorize(h.auth.has_organiser_role)
-    def __before__(self, **kwargs):
-        pass
 
     @dispatch_on(POST="_new") 
     def new(self):

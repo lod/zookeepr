@@ -62,7 +62,7 @@ ${ h.form(h.url_for(), method='GET') }
     <select name="person">
       <option value="All"/>All</option>
       %for person in c.all_person:
-        <option value="${ str(person.id) }">${person.firstname} ${person.lastname}</option>
+        <option value="${ str(person.id) }">${person.fullname}</option>
       %endfor
     </select>
   </td>

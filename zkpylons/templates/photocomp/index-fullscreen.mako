@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en-us">
 <head>
-  <title>Photocompetition Full Screen</title>
+  <title>Photo Competition Full Screen</title>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <script type="text/javascript" src="/jquery.min.js"></script>
   <script type="text/javascript" src="/js/galleria/galleria.js"></script>

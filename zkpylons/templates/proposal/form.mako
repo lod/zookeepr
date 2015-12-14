@@ -95,7 +95,7 @@
 % endif
 
 
-    <h2>About yourself</h2>
+    <h2>About Yourself</h2>
 
     <p><em>Note: These are common for all your proposals: presentations and tutorials.</em></p>
 

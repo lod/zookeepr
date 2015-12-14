@@ -33,6 +33,7 @@ from zk.model.social_network import SocialNetwork
 from zk.model.travel import Travel
 from zk.model.voucher import Voucher
 from zk.model.special_offer import SpecialOffer
+from zk.model.volunteer import Volunteer
 
 from datetime import datetime, timedelta
 
@@ -222,6 +223,7 @@ class ProposalFactory(_ModelFactory):
     technical_requirements = factory.Sequence(lambda n: "technical_requirements %03d" % n)
     title                  = factory.Sequence(lambda n: "title %03d" % n)
     project                = factory.Sequence(lambda n: "project %03d" % n)
+    url                    = factory.LazyAttribute(lambda x: faker.url())
 
     video_release  = True
     slides_release = True
@@ -425,3 +427,11 @@ class SpecialOfferFactory(_ModelFactory):
     name = factory.LazyAttribute(lambda x: faker.sentence(nb_words=3))
     description = factory.LazyAttribute(lambda x: faker.sentence(nb_words=10))
     id_name = factory.LazyAttribute(lambda x: faker.word())
+
+
+class VolunteerFactory(_ModelFactory):
+    class Meta: model = Volunteer
+
+    person = factory.SubFactory(PersonFactory)
+    areas = factory.LazyAttribute(lambda x: "\n\n".join(faker.paragraphs(nb=3)))
+    other = factory.LazyAttribute(lambda x: "\n\n".join(faker.paragraphs(nb=3)))

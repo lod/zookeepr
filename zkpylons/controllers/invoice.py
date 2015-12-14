@@ -18,8 +18,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema, ProductValidator, ExistingPersonValidator, ExistingInvoiceValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, ControllerProtector, in_group, not_anonymous, Predicate
 
 from zkpylons.lib.mail import email
 
@@ -55,13 +54,40 @@ class FakePerson():
     lastname = "Doe"
     email_address = "john.doe@example.com"
 
+class has_unique_key(Predicate):
+    message = "Valid url hash provided"
+    def evaluate(self, environ, credentials):
+        hashes = request.params.getall('hash')
+        for hashq in hashes:
+            db_hash = URLHash.find_by_hash(hashq)
+            print "hash", hashq, db_hash.url, request.path
+            # Want /invoice/2 to match /invoice/2 and /invoice/2/printable but not /invoice/23
+            if db_hash is not None:
+                if request.path == db_hash.url or request.path.startswith(db_hash.url+'/'):
+                    return # Pass the test
+        self.unmet()
+
+class is_owner(Predicate):
+    message = "Owner of invoice"
+
+    def evaluate(self, environ, credentials):
+        """ Check if provided owner of provided invoice id is current logged in user """
+        person_email = environ.get('REMOTE_USER')
+        invoice_id = environ['pylons.routes_dict'].get('id')
+        if person_email is None or invoice_id is None: self.unmet()
+
+        invoice = Invoice.find_by_id(invoice_id, abort_404=False)
+
+        if invoice is None or invoice.person.email_address != person_email:
+            self.unmet()
+
+@ControllerProtector(h.auth.Any(not_anonymous(), has_unique_key()))
 class InvoiceController(BaseController):
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.Or(h.auth.is_valid_user, h.auth.has_unique_key()))
     def __before__(self, **kwargs):
         pass
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @jsonify
     def product_list(self):
         print ProductCategory.find_all()
@@ -87,7 +113,7 @@ class InvoiceController(BaseController):
             })
         return raw
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new")
     def new(self):
         return render("/angular.mako")
@@ -118,11 +144,8 @@ class InvoiceController(BaseController):
 
         return dict(r=dict(invoice_id=invoice.id))
 
+    @ActionProtector(h.auth.Any(has_unique_key(), in_group('organiser'), is_owner()))
     def generate_hash(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_attendee(id), h.auth.has_organiser_role, h.auth.has_unique_key())):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         url = h.url_for(action='view', id=id)
         c.hash = URLHash.find_by_url(url=url)
         if c.hash is None:
@@ -141,11 +164,8 @@ class InvoiceController(BaseController):
         return render('/invoice/generate_url.mako')
 
 
+    @ActionProtector(h.auth.Any(has_unique_key(), in_group('organiser'), is_owner()))
     def view(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_attendee(id), h.auth.has_organiser_role, h.auth.has_unique_key())):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.printable = False
         c.invoice = Invoice.find_by_id(id, True)
         c.payment_received = None
@@ -155,11 +175,8 @@ class InvoiceController(BaseController):
             c.payment = c.payment_received.payment
         return render('/invoice/view.mako')
 
+    @ActionProtector(h.auth.Any(has_unique_key(), in_group('organiser'), is_owner()))
     def printable(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_attendee(id), h.auth.has_organiser_role, h.auth.has_unique_key())):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.printable = True
         c.invoice = Invoice.find_by_id(id, True)
         c.payment_received = None
@@ -169,14 +186,14 @@ class InvoiceController(BaseController):
             c.payment = c.payment_received.payment
         return render('/invoice/view_printable.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.can_edit = True
         c.invoice_collection = Invoice.find_all()
 
         return render('/invoice/list.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_remind")
     def remind(self):
         c.invoice_collection = meta.Session.query(Invoice).filter(Invoice.is_paid==False).filter(Invoice.is_void==False).all()
@@ -222,16 +239,13 @@ class InvoiceController(BaseController):
 
         return None # All fine
 
+    @ActionProtector(h.auth.Any(has_unique_key(), in_group('organiser'), is_owner()))
     @dispatch_on(POST="_pay")
     def pay(self, id):
         """Request confirmation from user
         """
         invoice = Invoice.find_by_id(id, True)
         person = invoice.person
-
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(person.id), h.auth.has_organiser_role, h.auth.has_unique_key())):
-            # Raise a no_auth error
-            h.auth.no_role()
 
         #return render('/registration/really_closed.mako')
 
@@ -246,7 +260,7 @@ class InvoiceController(BaseController):
         meta.Session.commit()
         return render("/invoice/payment.mako")
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @jsonify
     def get_invoice(self, id):
         """
@@ -270,7 +284,7 @@ class InvoiceController(BaseController):
         }
         return dict(r=dict(invoice=obj))
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @jsonify
     def pay_invoice(self, id):
         """
@@ -315,10 +329,6 @@ class InvoiceController(BaseController):
         c.invoice = payment.invoice
         person = c.invoice.person
 
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(person.id), h.auth.has_organiser_role, h.auth.has_unique_key())):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         error = self._check_invoice(person, c.invoice)
         if error is not None:
             return error
@@ -344,7 +354,7 @@ class InvoiceController(BaseController):
         else:
             redirect(uri)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new")
     def refund(self, id):
         invoice = Invoice.find_by_id(id)
@@ -373,7 +383,7 @@ class InvoiceController(BaseController):
         form = render("/invoice/new.mako")
         return htmlfill.render(form, defaults, use_all_keys=True)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_pay_manual")
     def pay_manual(self, id):
         """Request confirmation from user
@@ -393,11 +403,8 @@ class InvoiceController(BaseController):
         return redirect_to(controller='payment', id=c.payment.id, action='new_manual')
 
 
+    @ActionProtector(h.auth.Any(has_unique_key(), in_group('organiser'), is_owner()))
     def pdf(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_attendee(id), h.auth.has_organiser_role, h.auth.has_unique_key())):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.invoice = Invoice.find_by_id(id, True)
         xml_s = render('/invoice/pdf.mako')
 
@@ -408,22 +415,19 @@ class InvoiceController(BaseController):
         return pdfgen.wrap_pdf_response(pdf_data, filename)
 
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), is_owner()))
     def void(self, id):
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_attendee(id), h.auth.has_organiser_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         c.invoice = Invoice.find_by_id(id, True)
         if c.invoice.is_void:
             h.flash("Invoice was already voided.")
             return redirect_to(action='view', id=c.invoice.id)
-        elif len(c.invoice.payment_received) and h.auth.authorized(h.auth.has_organiser_role):
+        elif len(c.invoice.payment_received) and has_group('organiser'):
             h.flash("Invoice has a payment applied to it, do you want to " + h.link_to('Refund', h.url_for(action='refund')) + " instead?")
             return redirect_to(action='view', id=c.invoice.id)
         elif len(c.invoice.payment_received):
             h.flash("Cannot void a paid invoice.")
             return redirect_to(action='view', id=c.invoice.id)
-        elif h.auth.authorized(h.auth.has_organiser_role):
+        elif has_group('organiser'):
             c.invoice.void = "Administration Change"
             meta.Session.commit()
             h.flash("Invoice was voided.")
@@ -436,7 +440,7 @@ class InvoiceController(BaseController):
             h.flash("Previous invoice was voided.")
             return redirect_to(controller='registration', action='pay', id=c.person.registration.id)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def unvoid(self, id):
         c.invoice = Invoice.find_by_id(id, True)
         c.invoice.void = None
@@ -445,7 +449,7 @@ class InvoiceController(BaseController):
         h.flash("Invoice was un-voided.")
         return redirect_to(action='view', id=c.invoice.id)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def extend(self, id):
         c.invoice = Invoice.find_by_id(id, True)
         if c.invoice.is_overdue:

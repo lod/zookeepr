@@ -13,8 +13,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.lib.mail import email
 
@@ -34,10 +33,10 @@ class EditEventTypeSchema(BaseSchema):
     event_type = EventTypeSchema()
     pre_validators = [NestedVariables]
 
+@ControllerProtector(in_group('organiser'))
 class EventTypeController(BaseController):
 
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.has_organiser_role)
     def __before__(self, **kwargs):
         pass
 

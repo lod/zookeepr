@@ -16,42 +16,27 @@ from pylons import request, response, session
 from pylons.controllers.util import redirect, abort
 from pylons import url
 
-from repoze.what.middleware import setup_auth
-from repoze.what.predicates import Predicate, in_group
+from .predicates import Predicate, in_group
 from repoze.who.api import get_api
 from repoze.who.plugins.sa import SQLAlchemyAuthenticatorPlugin, SQLAlchemyUserMDPlugin
 from repoze.who.plugins.auth_tkt import AuthTktCookiePlugin
 from repoze.who.plugins.friendlyform import FriendlyFormPlugin
 # TODO: repoze.who.plugins.browserid
-from repoze.what.plugins import pylonshq
-from repoze.what.plugins.sql import configure_sql_adapters
+from repoze.who.classifiers import default_request_classifier, default_challenge_decider
+from repoze.who.middleware import PluggableAuthenticationMiddleware
 
 # Import to provide a centralised export point
-from repoze.what.plugins.pylonshq import ActionProtector
-from repoze.what.predicates import is_user, in_group, All, Any, not_anonymous
+from .protectors import ActionProtector, ControllerProtector
+from .predicates import is_user, in_group, All, Any, Not, not_anonymous
 
+from paste.httpexceptions import HTTPClientError
+from webob.exc import HTTPForbidden, HTTPUnauthorized
 
 log = logging.getLogger(__name__)
 
 
 def add_auth(app,config):
 
-    # Mostly a copy from repoze.what.plugins.quickstart.setup_sql_auth
-    source_adapters = configure_sql_adapters(
-            Person,
-            Role,
-            None,
-            meta.Session,
-            {'item_name' : 'email_address', 'items':'people', 'section_name':'name', 'sections':'roles'},
-            {})
-
-    group_adapters= {}
-    group_adapter = source_adapters.get('group')
-    if group_adapter:
-        group_adapters = {'sql_auth': group_adapter}
-
-    permission_adapters = {}
-    
     # Setting the repoze.who authenticators:
     who_args = {}
     who_args['authenticators'] = []
@@ -60,6 +45,7 @@ def add_auth(app,config):
     sqlauth.translations.update({'user_name':'email_address', 'validate_password':'check_password'})
     cookie = AuthTktCookiePlugin('my_secret', 'authtkt',
                                  timeout=None, reissue_time=None)
+    # TODO: cookie secret needs to come from somewhere...
     who_args['authenticators'].append(('sqlauth', sqlauth))
     who_args['authenticators'].append(('auth_tkt', cookie))
     
@@ -93,8 +79,17 @@ def add_auth(app,config):
 
     who_args['log_stream'] = log
     who_args['log_level'] = logging.DEBUG
+
+    who_args['classifier'] = default_request_classifier
+    who_args['challenge_decider'] = default_challenge_decider
+
+    # Make testing easier
+    #who_args['skip_authentication'] = config.get('skip_authentication')
     
-    middleware = setup_auth(app, group_adapters, {}, **who_args)
+    # TODO: Switch to ini based configuration
+    # http://repozewho.readthedocs.org/en/latest/configuration.html#declarative-configuration
+    # middleware = setup_auth(app, group_adapters, {}, **who_args)
+    middleware = PluggableAuthenticationMiddleware(app, **who_args)
     return middleware
 
 def override_login(email):
@@ -113,8 +108,6 @@ def override_login(email):
 
 
 def redirect_auth_denial(reason):
-    print "REDIRECT-AUTH-DENIAL", reason, request, response
-
     if response.status_int == 401:
         message = 'You are not logged in.'
         message_type = 'warning'
@@ -126,31 +119,54 @@ def redirect_auth_denial(reason):
     #redirect(url('/login', came_from=url.current()))
     abort(response.status_int, comment=reason)
 
-class ActionProtector(pylonshq.ActionProtector):
+class NotAuthorizedError(HTTPForbidden):
+    pass
+
+class ActionProtector(ActionProtector):
     default_denial_handler = staticmethod(redirect_auth_denial)
 
+def has_group(group):
+    return in_group(group).is_met(request.environ)
+
 def has_organiser_role():
-    return in_group('organiser').is_met(request.environ)
+    return has_group('organiser')
 
 def has_reviewer_role():
-    return in_group('reviewer').is_met(request.environ)
+    return has_group('reviewer')
 
 def has_funding_reviewer_role():
-    return in_group('funding_reviewer').is_met(request.environ)
+    return has_group('funding_reviewer')
 
 def has_late_submitter_role():
-    return in_group('late_submitter').is_met(request.environ)
+    return has_group('late_submitter')
+
+def get_person():
+    email = request.environ.get('REMOTE_USER')
+    return Person.find_by_email(email, abort_404=False) if email is not None else None
 
 def get_person_id():
-    return Person.find_by_email(request.environ['REMOTE_USER']).id
+    person = get_person()
+    return person.id if person is not None else None
 
 class is_activated(Predicate):
     message = "Your user account must be activated to continue"
     def evaluate(self, environ, credentials):
-        print "CREDS", credentials
-        p = Person.find_by_email(environ['REMOTE_USER']);
+        p = get_person()
+        if p is None:
+            self.unmet()
         if not p.activated:
             # TODO: I don't like the idea of doing redirects in a tester
             #self.unmet(p.activated)
             # TODO: Should I be using zkpylons.lib.helpers.redirect_to()?
             redirect(url(controller="person", action="activate"))
+
+
+def require_group(group):
+    if not in_group(group).is_met(request.environ):
+        if not session.get('role_error', None):
+            session['role_error'] = "User doesn't have any of the specified roles"
+            session.save()
+        raise NotAuthorizedError("User doesn't have any of the specified roles")
+    else:
+        pass
+

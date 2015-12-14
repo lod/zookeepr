@@ -27,6 +27,7 @@ ${ h.form(h.url_for(controller="photocomp", action="upload"), multipart=True) }
     <td style="text-align: center; border-left: none; border-top: none; border-right: none; padding-bottom: 10px"><b>Entry ${c.ENTRY_NAMES[entry_id]}</b></td>
 %endfor
   </tr>
+  </thead>
   <tbody>
 %for day in range(c.DAYS_OPEN):
   <tr>
@@ -56,13 +57,16 @@ ${ h.form(h.url_for(controller="photocomp", action="upload"), multipart=True) }
 %endfor
   </tr>
 %endfor
+  </tbody>
 %if c.days_open >= -1 and c.days_open < c.DAYS_OPEN:
+  <tfoot>
   <tr>
     <td style="border: none;">&nbsp;</td>
     <td colspan=2 style="border: none; padding-top: 10px; text-align: center">
         ${ h.submit("submit", "Submit") }
     </td>
   </tr>
+  </tfoot>
 %endif
 </table>
 

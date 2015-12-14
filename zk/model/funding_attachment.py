@@ -7,6 +7,8 @@ from person_role_map import person_role_map
 
 from meta import Session
 
+# TODO: This table should be merged with attachment
+
 #import datetime
 #import random
 

@@ -1,5 +1,5 @@
 <%inherit file="/base.mako" />
-<h2>Edit proposal "${ c.proposal.title }"</h2>
+<h2>Edit Proposal "${ c.proposal.title }"</h2>
 
 <div id="proposal">
 

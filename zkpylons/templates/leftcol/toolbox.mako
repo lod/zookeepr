@@ -21,7 +21,7 @@
     <li><span class="menu-header">${ h.signed_in_person().firstname }'s Profile</span>
     <ul class="netv-vmenu">
 ${ parent.toolbox_extra() }
-%   if c.config.get("cfp_status") == 'open' or h.auth.authorized(h.auth.has_late_submitter_role):
+%   if c.config.get("cfp_status") == 'open' or h.auth.has_group('late_submitter'):
       ${ make_link('Submit a proposal', h.url_for(controller='proposal', action='new', id=None)) }
 %   endif
 %   if c.config.get("cfmini_status") == 'open':

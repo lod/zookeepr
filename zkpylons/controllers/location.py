@@ -14,8 +14,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ActionProtector, in_group
 
 from zkpylons.lib.mail import email
 
@@ -44,12 +43,12 @@ class LocationController(BaseController):
     def __before__(self, **kwargs):
         c.can_edit = True
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_new")
     def new(self):
         return render('/location/new.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=NewLocationSchema(), form='new', post_only=True, on_get=True, variable_decode=True)
     def _new(self):
         results = self.form_result['location']
@@ -61,17 +60,17 @@ class LocationController(BaseController):
         h.flash("Location created")
         redirect_to(action='index', id=None)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def view(self, id):
         c.location = Location.find_by_id(id)
         return render('/location/view.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     def index(self):
         c.location_collection = Location.find_all()
         return render('/location/list.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_edit")
     def edit(self, id):
         c.location = Location.find_by_id(id)
@@ -81,7 +80,7 @@ class LocationController(BaseController):
         form = render('/location/edit.mako')
         return htmlfill.render(form, defaults)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=EditLocationSchema(), form='edit', post_only=True, on_get=True, variable_decode=True)
     def _edit(self, id):
         location = Location.find_by_id(id)
@@ -94,7 +93,7 @@ class LocationController(BaseController):
         h.flash("The Location has been updated successfully.")
         redirect_to(action='index', id=None)
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_delete")
     def delete(self, id):
         """Delete the location
@@ -106,7 +105,7 @@ class LocationController(BaseController):
         c.location = Location.find_by_id(id)
         return render('/location/confirm_delete.mako')
 
-    @authorize(h.auth.has_organiser_role)
+    @ActionProtector(in_group('organiser'))
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
     def _delete(self, id):
         c.location = Location.find_by_id(id)

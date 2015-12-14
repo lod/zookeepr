@@ -9,3 +9,4 @@ factory_boy
 pytest
 fake-factory
 beautifulsoup
+freezegun

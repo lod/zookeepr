@@ -89,7 +89,7 @@ class CrudHelper(object):
     
     def test_permissions(self, app, db_session,
             controller = None, page_id = None, target=None, target_class=None,
-            good_roles = ['organiser'], bad_roles = None,
+            good_roles = ['organiser'], bad_roles = None, ignore_roles = None,
             get_pages = ('new', 'view', 'index', 'edit', 'delete'),
             post_pages = ('new', 'edit', 'delete'),
             additional_get_pages = None, additional_post_pages = None,
@@ -107,11 +107,14 @@ class CrudHelper(object):
         all_roles = ['organiser', 'team', 'reviewer',
                      'miniconf', 'proposals_chair', 'late_submitter',
                      'funding_reviewer', 'press', 'miniconfsonly',
-                     'public'
+                     'public', 'checkin'
                     ]
 
+        if ignore_roles is None:
+            ignore_roles = []
+
         if bad_roles is None:
-            bad_roles = [n for n in all_roles if n not in good_roles]
+            bad_roles = [n for n in all_roles if n not in good_roles and n not in ignore_roles]
 
         # Public is a special role, for non-logged in users
         if 'public' in good_roles and 'public' in bad_roles:
@@ -174,16 +177,24 @@ class CrudHelper(object):
             elif method == "POST":
                 resp = app.post(url, status="*", **kwargs)
             print method, url, "want", ("good" if status is None else status), "got", resp.status_code
+            #print resp
 
             status_response = resp.status_code
             if resp.status_code == 200 and "Otherwise enter your credentials in the following form." in unicode(resp.body, 'utf-8'):   
                 # Not logged in, log in required - should really be a 401
                 status_response = 401
 
+            if resp.status_code == 302 and "/person/signin" in resp.location:
+                # Not logged in, log in required - should really be a 401
+                status_response = 401
+
+            if resp.status_code == 302 and "/person/activate" in resp.location:
+                # Not activated, 403 isn't really right but fits with test pattern
+                status_response = 403
+
             if status is None:
                 # Allow 2XX or 3XX response - same as WebTest default
-                assert status_response >= 200
-                assert status_response < 400
+                assert 200 <= status_response < 400
             else:
                 assert status_response == status
 
@@ -271,11 +282,12 @@ class CrudHelper(object):
 
         do_login(app, user)
 
-        resp = app.get(url_for(controller=controller, action='new'))
+        resp = app.get(url_for(controller=controller, action='new', id=None))
+        print resp
         
         assert title in unicode(resp.body, 'utf-8')
         f = resp.form
-        assert f.action == url_for(controller=controller, action='new')
+        assert f.action == url_for(controller=controller, action='new', id=None)
 
         if do_form_check:
             for k in data:
@@ -313,7 +325,7 @@ class CrudHelper(object):
 
     def test_index(self, app, db_session,
                 controller = None, title = None, user = None,
-                target_class = None, entries = None,
+                target_class = None, entries = None, url = None,
                 entry_actions = ('view', 'edit', 'delete'), page_actions = ('new',)
             ):
 
@@ -355,10 +367,14 @@ class CrudHelper(object):
                 entries = { t.id : get_target_entries(t) for t in targets }
                 print "Generated entries", entries
 
+        if url is None:
+            url = url_for(controller=controller, action='index', id=None)
+
         db_session.commit()
 
         do_login(app, user)
-        resp = app.get(url_for(controller=controller, action='index'))
+        resp = app.get(url)
+        print resp
         assert title in unicode(resp.body, 'utf-8')
 
         for pageid in entries:
@@ -368,9 +384,9 @@ class CrudHelper(object):
                 for expected in entries[pageid]:
                     assert expected in unicode(resp.body, 'utf-8')
             for act in entry_actions:
-                assert url_for(controller=controller, action=act,   id=pageid) in unicode(resp.body, 'utf-8')
+                assert url_for(controller=controller, action=act, id=pageid) in unicode(resp.body, 'utf-8')
         for act in page_actions:
-            assert url_for(controller=controller, action=act) in unicode(resp.body, 'utf-8')
+            assert url_for(controller=controller, action=act, id=None) in unicode(resp.body, 'utf-8')
 
         return resp
 
@@ -503,6 +519,7 @@ class CrudHelper(object):
         do_login(app, user)
 
         resp = app.get(url_for(controller=controller, action='edit', id=pageid))
+        print resp
         
         assert title in unicode(resp.body, 'utf-8')
         f = resp.form

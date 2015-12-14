@@ -16,7 +16,9 @@ ${ h.end_form() }
 
 <p>Otherwise enter your credentials in the following form.</p>
 
-${ h.form('/person/do_signin', method='post', id='signin-form') }
+## TODO: helper doesn't work - nfi why
+##${ h.form('/person/do_signin', method='post', id='signin-form') }
+<form action="/person/do_signin", method="post", id="signin-form">
 
     <p class="label"><label for="person.email_address">Email address:</label></p>
     <p class="entries">${ h.text('login', size=40) }</p>

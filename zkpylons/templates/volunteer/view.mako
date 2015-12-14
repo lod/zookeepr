@@ -4,7 +4,7 @@
 % if c.volunteer.accepted:
     <p>Your application to be a volunteer has been accepted</p>
 % endif
-%  if h.auth.authorized(h.auth.has_organiser_role):
+%  if h.auth.has_group('organiser'):
 <table>
     <tr>
         <td><b>Name:</b></td>
@@ -121,7 +121,7 @@ None
       ${ h.link_to('Edit', url=h.url_for(action='edit',id=c.volunteer.id)) } |
 % endif
       ${ h.link_to('Back', url=h.url_for(action='index', id=None)) }
-% if h.auth.authorized(h.auth.has_organiser_role):
+% if h.auth.has_group('organiser'):
 %   if c.volunteer.accepted != True:
         | ${ h.link_to('Accept', url=h.url_for(action='accept', id=c.volunteer.id)) }
 %   else:

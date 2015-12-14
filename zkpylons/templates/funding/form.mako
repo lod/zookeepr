@@ -43,7 +43,7 @@
     <p class="entries">${ h.textarea('funding.how_contribute', cols=70, rows=10) }</p>
     <p class="note">Please describe in what way you contribute to the open source community (for example, as a developer, documentor, QA/testing, bug submitter, Open Source advocate/community champion, or other leadership roles).  Up to about 500 words.</p>
 
-    <p class="label"><span class="mandatory">*</span><label for="funding.financial_circumstance">What are your financial circumstances?</label></p>
+    <p class="label"><span class="mandatory">*</span><label for="funding.financial_circumstances">What are your financial circumstances?</label></p>
     <p class="entries">${ h.textarea('funding.financial_circumstances', cols=70, rows=10) }</p>
     <p class="note">Please describe the financial circumstances that are stopping you from otherwise attending ${ c.config.get('event_name') }.</p>
 

@@ -14,7 +14,7 @@
 
 ${ h.hidden('person.company', value='') }</p>
 
-% if c.form is not 'edit' or h.auth.authorized(h.auth.has_organiser_role):
+% if c.form is not 'edit' or h.auth.has_group('organiser'):
     <div class="form-group">
       <div class="input-group">
         <input type="email" id="personemail_address" class="form-control" placeholder="Email Address" name="person.email_address" data-error="Uh Oh, that email address doesn't look right" />

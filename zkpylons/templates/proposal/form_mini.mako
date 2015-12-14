@@ -48,7 +48,7 @@
 
     <p class="label"><span class="mandatory">*</span><span class="publishable">&#8224;</span><label for="person.name">Organiser's name:</label></p>
     ${ h.hidden('person_to_edit', value=c.person.id) }
-    <p class="entries">${ h.text('person.name', size=60, disabled=True) }</p>
+	<p class="entries">${ c.person.fullname }</p>
     <p class="note">(Can't be changed here.)</p>
 
     <p class="label"><span class="mandatory">*</span><label for="person.mobile">Organiser's mobile phone number:</label></p>

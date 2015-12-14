@@ -1,13 +1,14 @@
 import cStringIO
-import datetime
 import logging
 import os
 import random
 import re
 import sys
 import time
+import errno
 
-import Image
+from datetime import datetime, date, timedelta
+from PIL import Image
 
 from pylons import request, response, session, tmpl_context as c
 from pylons.controllers.util import abort
@@ -18,7 +19,7 @@ from pylons.decorators.rest import dispatch_on
 from formencode import htmlfill, validators
 from formencode.variabledecode import NestedVariables
 
-from authkit.authorize.pylons_adaptors import authorize
+from zkpylons.lib.auth import Predicate, ActionProtector, in_group
 
 from webhelpers import paginate
 
@@ -41,7 +42,7 @@ VALID_EXTENSIONS= ("jpg","jpeg")        # Acceptable file name extensions
 # the required attributes.
 #
 class PhotoCompEntry(object):
-    SCALES       = frozenset(('orig', '68x51', '250x250', '1024x768'))
+    SCALES      = frozenset(('orig', '68x51', '250x250', '1024x768'))
     day         = None
     person_id   = None
     entry_id    = None
@@ -58,7 +59,7 @@ class PhotoCompEntry(object):
 
     def filename(self, scale):
         start_timestamp = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
-        date_day = start_timestamp + datetime.timedelta(self.day)
+        date_day = start_timestamp + timedelta(self.day)
         date_str = date_day.strftime("%Y%m%d")
         return "%s-%08d-%d-%s-%s" % (date_str, self.person_id, self.entry_id, scale, self.image_name)
 
@@ -114,8 +115,10 @@ class PhotoCompEntry(object):
 
     def add(self, db):
         if self.day < 0 or self.day >= DAYS_OPEN:
+            log.info("Invalid day %d" % self.day, self)
             return
         if self.entry_id < 0 or self.entry_id >= len(ENTRY_NAMES):
+            log.info("Invalid entry_id %d" % self.entry_id, self)
             return
         if not self.person_id in db:
             db[self.person_id] = []
@@ -141,11 +144,13 @@ class PhotoCompEntry(object):
     def read_db(cls):
         db_dir = cls.get_db_dir()
         db = {}
+        count = 0
         for entry_filename in os.listdir(db_dir):
             if entry_filename.startswith("."):
                 continue
             photo = cls.from_filename(entry_filename)
             photo.add(db)
+            count += 1
         #
         # Get rid of photos that don't have an original.
         #
@@ -162,8 +167,9 @@ class PhotoCompEntry(object):
     def from_filename(cls, filename):
         toks = filename.split("-", 4)
         open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
-        photo_date = datetime.datetime(*time.strptime(toks[0], "%Y%m%d")[:3])
+        photo_date = datetime(*time.strptime(toks[0], "%Y%m%d")[:3])
         day = (photo_date.date() - open_date.date()).days
+        assert day >= 0 # negative days can lead to interesting problems
         person_id = int(toks[1], 10)
         entry_id = int(toks[2], 10)
         image_name = toks[4]
@@ -183,98 +189,150 @@ class PhotoCompEntry(object):
         return "PhotoCompEntry(%r)" % self.filename("orig")
 
 
+class is_same_person(Predicate):
+    message = "matching person id"
 
+    def evaluate(self, environ, credentials):
+        person_email = environ.get('REMOTE_USER')
+        person_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or person_id is None:
+            self.unmet()
+
+        person = Person.find_by_id(person_id, abort_404=False)
+        if person is None or person_email != person.email_address:
+            self.unmet()
+
+class is_photo_uploader(Predicate):
+    message = "uploaded photo"
+
+    def evaluate(self, environ, credentials):
+        person_email = environ.get('REMOTE_USER')
+        photo_filename = environ['pylons.routes_dict'].get('filename')
+        if person_email is None or photo_filename is None:
+            self.unmet()
+
+        photo = PhotoCompEntry.from_filename(photo_filename)
+        if photo is None:
+            self.unmet()
+
+        person = Person.find_by_id(photo.person_id)
+        if person is None or person_email != person.email_address:
+            self.unmet()
+
+class is_photo_released(Predicate):
+    """ Photos are uploaded for a specific day and released once that day has passed. """
+    message = "photo released"
+
+    def evaluate(self, environ, credentials):
+        photo_filename = environ['pylons.routes_dict'].get('filename')
+        if photo_filename is None:
+            self.unmet()
+
+        photo = PhotoCompEntry.from_filename(photo_filename)
+        if photo is None:
+            self.unmet()
+
+        open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
+        days_open = (date.today() - open_date.date()).days
+        if days_open <= photo.day:
+            self.unmet()
 
 class PhotocompController(BaseController):
 
     def index(self):
+        day_filter = request.GET.get('day', 'All')
+        person_filter = request.GET.get('person', 'All')
+        submitted = request.GET.get('s', None)
+        randomise = not submitted or 'randomise' in request.GET
+
         c.DAYS_OPEN = DAYS_OPEN
-        open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
-        days_open = (datetime.date.today() - c.open_date.date()).days
+
+        c.open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
+        days_open = (date.today() - c.open_date.date()).days
+
         photo_db = PhotoCompEntry.read_db()
+
         photos = [
             photo
             for days in photo_db.values()
             for entries in days
             for photo in entries
             if photo is not None and photo.day < days_open]
+
         c.no_photos = not photos
-        day_filter = request.GET.get('day', 'All')
+
         if day_filter and day_filter != 'All':
             photos = [p for p in photos if str(p.day) == day_filter]
-        person_filter = request.GET.get('person', 'All')
+
         if person_filter and person_filter != 'All':
             photos = [p for p in photos if str(p.person_id) == person_filter]
-        submitted = request.GET.get('s', None)
-        randomise = not submitted or 'randomise' in request.GET
+
         if randomise:
             random.shuffle(photos)
         else:
             photos.sort(key=lambda p: (p.day, p.person_id, p.entry_id))
+
         person_map = {}
         for photo in photos:
             photo.write_scaled()
             person_map[photo.person_id] = None
+
         c.all_person = []
         for person_id in person_map:
-            person = Person.find_by_id(person_id)
-            person_map[person_id] = person
-            c.all_person.append(person)
+            person = Person.find_by_id(person_id, abort_404=False)
+            if person:
+                person_map[person_id] = person
+                c.all_person.append(person)
         c.all_person.sort(key=lambda person: person.fullname.lower())
+
         c.photos = photos
+
         def photo_title(photo):
-            return "%s %s, %s entry %s, %s" % (
-                person_map[photo.person_id].firstname,
-                person_map[photo.person_id].lastname,
-                (c.open_date + datetime.timedelta(photo.day)).strftime('%A'),
+            return "%s, %s entry %s, %s" % (
+                person_map[photo.person_id].fullname,
+                (c.open_date + timedelta(photo.day)).strftime('%A'),
                 ENTRY_NAMES[photo.entry_id],
                 photo.image_name,)
+
         c.photo_title = photo_title
+
         field_values = {
             'day':      day_filter,
             'person':   person_filter,
         }
+
         if randomise:
             field_values['randomise'] = '1'
+
 	if submitted == 'Full Screen' and photos:
             html = render('/photocomp/index-fullscreen.mako')
         else:
             html = render('/photocomp/index.mako')
+
         return htmlfill.render(html, field_values)
 
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
-    def edit(self, id=None):
-        #
-        # Helpfully redirect to the correct URL.
-        #
+    @ActionProtector(h.auth.Any(is_same_person(), in_group('organiser')))
+    def edit(self, id):
         if id is None:
-            return redirect_to(h.url_for(id=h.signed_in_person().id))
-        #
-        # Only an organiser can edit someone elses photos.
-        #
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_organiser_role)):
-            h.auth.no_role()
+            abort(404)
+        print "ID:", type(id), id
         person_id = int(id, 10)
         c.open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
-        c.days_open = (datetime.date.today() - c.open_date.date()).days
+        c.days_open = (date.today() - c.open_date.date()).days
         photo_db = PhotoCompEntry.read_db()
         c.photo = lambda day, entry: PhotoCompEntry.get(photo_db, person_id, day, entry)
-        c.is_organiser = h.auth.authorized(h.auth.has_organiser_role)
+        c.is_organiser = h.auth.has_group('organiser')
         c.DAYS_OPEN = DAYS_OPEN
         c.ENTRY_NAMES = ENTRY_NAMES
         return render('/photocomp/edit.mako')
 
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
-    def upload(self, id=None):
-        #
-        # Only an organiser can upload someone elses photos.
-        #
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(id), h.auth.has_organiser_role)):
-            h.auth.no_role()
+    @ActionProtector(h.auth.Any(is_same_person(), in_group('organiser')))
+    def upload(self, id):
+        if id is None:
+            abort(404)
         open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
-        days_open = (datetime.date.today() - open_date.date()).days
+        days_open = (date.today() - open_date.date()).days
         photo_db = PhotoCompEntry.read_db()
         if len(VALID_EXTENSIONS) == 1:
             valid_extensions = VALID_EXTENSIONS[0]
@@ -284,7 +342,7 @@ class PhotocompController(BaseController):
         # See what photos he has given us.  The an organiser can upload
         # anything without restrictions.
         #
-        if h.auth.authorized(h.auth.has_organiser_role):
+        if h.auth.has_group('organiser'):
             day_range = range(0, DAYS_OPEN)
         else:
             day_range = range(max(days_open, 0), DAYS_OPEN)
@@ -293,28 +351,36 @@ class PhotocompController(BaseController):
                 old_photo = PhotoCompEntry.get(photo_db, int(id), day, entry_id)
                 photo_field_name = 'photo-%d-%d' % (day, entry_id)
                 delete_field_name = 'delete-%d-%d' % (day, entry_id)
-                if hasattr(request.POST[photo_field_name], 'value'):
+                if hasattr(request.POST.get(photo_field_name), 'value'):
                     image_data = request.POST[photo_field_name].value
                     image_name = request.POST[photo_field_name].filename
                     if len(image_data) > MAX_IMAGE_SIZE*1024*1024:
-                        h.flash("%s is larger than %dMib" % (image_name, MAX_IMAGE_SIZE))
+                        error = "%s is larger than %dMib" % (image_name, MAX_IMAGE_SIZE)
+                        log.info(error)
+                        h.flash(error)
                         continue
                     toks = list(os.path.splitext(os.path.basename(image_name)))
                     if toks[0].upper() == toks[0]:
                         toks[0] = toks[0].lower()
                     toks[1] = toks[1].lower()
                     if not toks[1][1:] in VALID_EXTENSIONS:
-                        h.flash("%s doesn't end in %s." % (image_name, valid_extensions))
+                        error = "%s doesn't end in %s." % (image_name, valid_extensions)
+                        log.info(error)
+                        h.flash(error)
                         continue
                     image_file = cStringIO.StringIO(image_data)
                     try:
                         image = Image.open(image_file)
                         image.load()
                     except:
-                        h.flash("%s doesn't look like a valid image" % image_name)
+                        error = "%s doesn't look like a valid image" % image_name
+                        log.info(error)
+                        h.flash(error)
                         continue
                     if image.format != "JPEG":
-                        h.flash("%s isn't a JPEG image" % image_name)
+                        error = "%s isn't a JPEG image" % image_name
+                        log.info(error)
+                        h.flash(error)
                         continue
                     new_image_name = toks[0] + toks[1]
                     if old_photo:
@@ -330,28 +396,36 @@ class PhotocompController(BaseController):
     #
     # Return a photo in the database to the client.
     #
+    # TODO: Making this the view method, or mapping the view on to this would better match ZK convention
     def photo(self, filename=None):
         if not filename:
             abort(404)
         if "/" in filename or filename.startswith("."):
             abort(403)
         open_date = datetime.strptime(Config.get("date"), "%Y-%m-%dT%H:%M:%S")
-        days_open = (datetime.date.today() - open_date.date()).days
-        photo = PhotoCompEntry.from_filename(filename)
+        days_open = (date.today() - open_date.date()).days
+
+        try:
+            photo = PhotoCompEntry.from_filename(filename)
+        except:
+            # There are a number of ways that the filename parsing can fail
+            # All imply an invalid filename -> file that doesn't exist
+            abort(404)
+
         #
         # If the entries haven't closed for this day then only the logged in
         # person or an organiser can see it.
         #
-        # TODO: A judge can see it too.
-        #
         id_str = str(photo.person_id)
         if days_open <= photo.day:
-            if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_user(photo.person_id), h.auth.has_organiser_role)):
+            if not h.auth.has_group('organiser') and not h.auth.has_group('photocomp_judge')and photo.person_id != h.auth.get_person_id():
                 abort(403)
         #
         # They can have it.
         #
         try:
+            # photo.scales will only have one entry in this instance
+            # TODO: Should be default parameter...
             handle = open(photo.pathname(tuple(photo.scales)[0]), "rb")
         except EnvironmentError, e:
             if e.errno != errno.ENOENT:

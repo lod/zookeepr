@@ -21,15 +21,10 @@ ${ h.form(h.url_for()) }
 % endif
 
 <h3>Review</h3>
-  <% reviewed_already = False %>
-% for x in c.funding.reviews:
-%   if x.reviewer == c.signed_in_person:
-<p>You have already reviewered this funding. To modify your review, ${ h.link_to('click here', url=h.url_for(controller='funding_review', action='edit', id=x.id)) }.</p>
-        <% reviewed_already = True %>
-        <% break %>
-%   endif
-% endfor
-% if not reviewed_already:
+<% reviewers = [ x.reviewer for x in c.funding.reviews ] %>
+% if c.signed_in_person in reviewers:
+  <p>You have already reviewed this funding request. To modify your review, ${ h.link_to('click here', url=h.url_for(controller='funding_review', action='edit', id=x.id)) }.</p>
+% else:
 <fieldset>
 <legend>
 Your opinion on this funding application.

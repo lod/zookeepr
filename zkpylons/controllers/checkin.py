@@ -17,23 +17,21 @@ import zkpylons.lib.helpers as h
 import sqlalchemy as sa
 from sqlalchemy.sql.expression import cast
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
-from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.model import meta, Person, FulfilmentGroup, Fulfilment, FulfilmentItem, Proposal
 
 log = logging.getLogger(__name__)
 
+@ControllerProtector(h.auth.Any(in_group('organiser'), in_group('checkin')))
 class CheckinController(BaseController):
-    @authorize(h.auth.Or(h.auth.has_organiser_role, h.auth.HasZookeeprRole('checkin')))
-    def __before__(self, **kwargs):
-        pass
 
     @jsonify
     def lookup(self):
-        q = request.params['q']
+        q = request.params.get('q')
+        if q is None:
+            return dict(r=list())
+
         # Assume that the SQL library handles the SQL attack vectors
 
         person_query =  meta.Session.query(Person.id, sa.func.concat(Person.fullname, " - ", Person.email_address).label("pretty")).filter(sa.or_(
@@ -67,9 +65,11 @@ class CheckinController(BaseController):
         Use direct sql queries because I am too lazy to work out how James' magic queries work.
         """
 
-        id = request.params['id']
-        id = int(id)
-        # Assume that the SQL library sanitizes this somehow somewhere
+        id = request.params.get('id')
+        if id is None:
+            return None
+
+        id = int(id) # Acts as input sanitizer
 
         person_qry_text = """select p.*
                              from person p
@@ -168,8 +168,11 @@ class CheckinController(BaseController):
         import json
 
         debug = ""
-        data = request.params['data']
-        data = json.loads(data)
+        data = request.params.get('data')
+        if data is None:
+            return
+        else:
+            data = json.loads(data)
 
         for fulfilment in data['fulfilments']:
             db_fulfilment = Fulfilment.find_by_id(int(fulfilment['id']), abort_404=False)
@@ -196,12 +199,15 @@ class CheckinController(BaseController):
 
         raise Exception( 'Success')
 
+    # TODO: get_talk does not seem to be part of the checkin process
     @jsonify
     def get_talk(self):
-        if 1:
-            id = request.params['id']
-            id = int(id)
+        id = request.params.get('id')
+        if id is None:
+            return
+        id = int(id)
 
+        if 1:
             bio_qry = """
                         SELECT string_agg(concat('<span class="name">', person.firstname, ' ', person.lastname, E'</span>\n', '<p class="bio">', person.bio, '</p>'), E'\n') AS bio
                         FROM event
@@ -214,16 +220,9 @@ class CheckinController(BaseController):
             bio = meta.Session.execute(bio_qry).fetchone()
             return bio['bio']
         else:
-            id = request.params['id']
-            id = int(id)
-
             talk = meta.Session.execute('SELECT * from proposal where id = %d' %id).fetchone()
             talk_dict = {}
             talk_dict.update(talk)
             del talk_dict['creation_timestamp']
             del talk_dict['last_modification_timestamp']
             return talk_dict
-
-
-    def bio_list(self):
-        return render('/checkin/bio_list.mako')

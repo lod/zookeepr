@@ -13,15 +13,12 @@ from zkpylons.lib.validators import BaseSchema, DbContentTypeValidator
 import zkpylons.lib.helpers as h
 from datetime import datetime, timedelta
 
-from repoze.what.plugins.pylonshq import ActionProtector
-from repoze.what.predicates import is_user, in_group, Any
+from zkpylons.lib.auth import ActionProtector, in_group, has_group
 
 from zkpylons.lib.mail import email
 
 from zkpylons.model import meta
 from zkpylons.model import DbContent, DbContentType
-
-from not_found import NotFoundController
 
 from webhelpers import paginate
 from pylons.controllers.util import abort
@@ -102,9 +99,8 @@ class DbContentController(BaseController):
     # organiser, suppress the page.
     def view(self, id):
         c.db_content = DbContent.find_by_id(id)
-        if c.db_content.publish_timestamp > datetime.now() and not h.auth.authorized(h.auth.has_organiser_role):
-            c.db_content = None
-            return NotFoundController().view()
+        if c.db_content.publish_timestamp > datetime.now() and not has_group('organiser'):
+            abort(404)
         elif c.db_content.publish_timestamp > datetime.now():
             h.flash(("This content is marked to be published on %s and will not be visiable to public until then." % c.db_content.publish_timestamp), 'Warning')
 
@@ -119,7 +115,7 @@ class DbContentController(BaseController):
         c.db_content = DbContent.find_by_url(url, abort_404=False)
         if c.db_content is not None:
            return self.view(c.db_content.id)
-        return NotFoundController().view()
+        abort(404)
 
     @ActionProtector(in_group('organiser'))
     @dispatch_on(POST="_edit") 
@@ -214,7 +210,6 @@ class DbContentController(BaseController):
         c.no_theme = request.GET.get('no_theme') == 'true'
         redirect_to(action="list_files", folder=request.GET.get('folder', '/'), no_theme=c.no_theme)
 
-    @authorize(h.auth.has_organiser_role)
     def _upload(self):
         c.current_folder = request.GET.get('folder', '/')
         directory = get_path('public_path') + c.current_folder
@@ -241,7 +236,6 @@ class DbContentController(BaseController):
         c.no_theme = request.GET.get('no_theme') == 'true'
         return render('/db_content/delete_folder.mako')
 
-    @authorize(h.auth.has_organiser_role)
     def _delete_folder(self):
         try:
             c.folder = request.GET['folder']
@@ -273,7 +267,6 @@ class DbContentController(BaseController):
 
         return render('/db_content/delete_file.mako')
 
-    @authorize(h.auth.has_organiser_role)
     def _delete_file(self):
         try:
             c.file = request.GET['file']

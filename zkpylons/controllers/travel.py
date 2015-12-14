@@ -13,10 +13,7 @@ from zkpylons.lib.ssl_requirement import enforce_ssl
 from zkpylons.lib.validators import BaseSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
-from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ControllerProtector, in_group
 
 from zkpylons.model import meta
 from zkpylons.model.travel import Travel
@@ -36,11 +33,10 @@ class EditTravelSchema(BaseSchema):
     travel = TravelSchema()
     pre_validators = [NestedVariables]
 
+@ControllerProtector(h.auth.All(in_group('organiser'), in_group('funding_reviewer')))
 class TravelController(BaseController):
 
     @enforce_ssl(required_all=True)
-    @authorize(h.auth.has_organiser_role)
-    @authorize(h.auth.has_funding_reviewer_role)
     def __before__(self, **kwargs):
         c.can_edit = True
 

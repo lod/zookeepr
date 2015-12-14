@@ -12,8 +12,7 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema, PersonValidator, ProposalValidator, FileUploadValidator, PersonSchema, ProposalTypeValidator, TargetAudienceValidator, ProposalStatusValidator, AccommodationAssistanceTypeValidator, TravelAssistanceTypeValidator
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
+from zkpylons.lib.auth import ControllerProtector, is_activated
 
 from zkpylons.lib.mail import email
 
@@ -27,6 +26,7 @@ from zkpylons.lib.validators import ReviewSchema
 
 log = logging.getLogger(__name__)
 
+@ControllerProtector(is_activated())
 class MiniconfProposalController(BaseController):
 
     def __init__(self, *args):
@@ -34,8 +34,6 @@ class MiniconfProposalController(BaseController):
         c.cfmini_status    = Config.get('cfmini_status')
         c.proposal_editing = Config.get('proposal_editing')
 
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
     def __before__(self, **kwargs):
         c.proposal_types = ProposalType.find_all()
         c.target_audiences = TargetAudience.find_all()
@@ -61,7 +59,6 @@ class MiniconfProposalController(BaseController):
             'proposal.travel_assistance': 1,
             'proposal.video_release': 0,
             'proposal.slides_release': 0,
-            'person.name' : c.person.fullname,
             'person.mobile' : c.person.mobile,
             'person.experience' : c.person.experience,
             'person.bio' : c.person.bio,

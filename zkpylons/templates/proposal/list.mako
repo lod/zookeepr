@@ -54,7 +54,7 @@
 %     endif
     <!--<td>
 %     for p in s.people:
-      ${ h.link_to( "%s %s" % (p.firstname, p.lastname) or p.email_address or p.id, url=h.url_for(controller='person', action='view', id=p.id)) }<br>
+      ${ h.link_to( "%s" % (p.fullname) or p.email_address or p.id, url=h.url_for(controller='person', action='view', id=p.id)) }<br>
 %     endfor
     </td>-->
     <td>
@@ -87,7 +87,7 @@
       </p>
     </td>
     <td>
-%  if c.proposal_editing == 'open' or h.auth.authorized(h.auth.has_late_submitter_role):
+%  if c.proposal_editing == 'open' or h.auth.has_group('late_submitter'):
       ${ h.link_to("edit", url=h.url_for(controller='proposal', action='edit', id=s.id)) }
 %  endif
 %  if not (s.accepted or s.declined or s.withdrawn):

@@ -8,7 +8,6 @@ from zkpylons.model.db_content import DbContent, DbContentType
 
 from zkpylons.lib.base import BaseController, render
 
-
 log = logging.getLogger(__name__)
 
 
@@ -27,7 +26,6 @@ class HomeController(BaseController):
         __before__ code from SecureController here.
         """
 
-        if 'signed_in_person_id' in session:
-            c.signed_in_person = self.dbsession.query(Person).filter_by(id=session['signed_in_person_id']).one()
+        c.signed_in_person = h.auth.get_person()
         c.db_content = DbContent.find_by_url('/home', abort_404=False)
         return render('/home.mako')

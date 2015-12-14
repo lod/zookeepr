@@ -12,55 +12,56 @@ from zkpylons.lib.base import BaseController, render
 from zkpylons.lib.validators import BaseSchema
 import zkpylons.lib.helpers as h
 
-from authkit.authorize.pylons_adaptors import authorize
-from authkit.permissions import ValidAuthKitUser
-
-from zkpylons.lib.mail import email
+from zkpylons.lib.auth import ControllerProtector, ActionProtector, in_group, Predicate
 
 from zkpylons.model import meta
 from zkpylons.model import Funding, FundingAttachment
 
 log = logging.getLogger(__name__)
 
-class FundingAttachmentController(BaseController):
-    @authorize(h.auth.is_valid_user)
-    @authorize(h.auth.is_activated_user)
-    def __before__(self, **kwargs):
-        pass
+class is_owner(Predicate):
+    message = "Owner of funding request"
 
+    def evaluate(self, environ, credentials):
+        """ Check if the funding attachment's funding request submitter matches the logged in user """
+
+        person_email = environ.get('REMOTE_USER')
+        attachment_id = environ['pylons.routes_dict'].get('id')
+
+        if person_email is None or attachment_id is None:
+            self.unmet()
+
+        funding_email = FundingAttachment.find_by_id(attachment_id, abort_404=False).funding.person.email_address
+
+        if funding_email != person_email:
+            self.unmet()
+
+
+@ControllerProtector(h.auth.is_activated())
+class FundingAttachmentController(BaseController):
+
+    @ActionProtector(h.auth.Any(in_group('organiser'), is_owner()))
     @dispatch_on(POST="_delete")
     def delete(self, id):
         c.attachment = FundingAttachment.find_by_id(id)
         c.funding = Funding.find_by_id(c.attachment.funding_id)
         
-        if not (h.auth.authorized(h.auth.has_organiser_role) or c.funding.person == h.signed_in_person()):
-            # Raise a no_auth error
-            h.auth.no_role()
-
         return render('/funding_attachment/confirm_delete.mako')
 
     @validate(schema=None, form='delete', post_only=True, on_get=True, variable_decode=True)
     def _delete(self, id):
-        c.attachment = FundingAttachment.find_by_id(id)
-        funding = Funding.find_by_id(c.attachment.funding_id)
+        attachment = FundingAttachment.find_by_id(id)
+        funding_id = attachment.funding_id
 
-        if not (h.auth.authorized(h.auth.has_organiser_role) or funding.person == h.signed_in_person()):
-            # Raise a no_auth error
-            h.auth.no_role()
-
-        meta.Session.delete(c.attachment)
+        meta.Session.delete(attachment)
         meta.Session.commit()
 
         h.flash("Attachment Deleted")
-        redirect_to(controller='funding', action='view', id=funding.id)
+        redirect_to(controller='funding', action='view', id=funding_id)
 
+    @ActionProtector(h.auth.Any(in_group('organiser'), in_group('funding_reviewer'), is_owner()))
     def view(self, id):
         attachment = FundingAttachment.find_by_id(id)
-        funding = Funding.find_by_id(attachment.funding_id)
-
-        if not h.auth.authorized(h.auth.Or(h.auth.is_same_zkpylons_funding_submitter(funding.id), h.auth.has_organiser_role, h.auth.has_funding_reviewer_role)):
-            # Raise a no_auth error
-            h.auth.no_role()
 
         response.headers['content-type'] = attachment.content_type
         response.headers.add('content-transfer-encoding', 'binary')
