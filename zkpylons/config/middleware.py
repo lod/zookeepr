@@ -53,9 +53,6 @@ def  make_app(global_conf, full_stack=True, static_files=True, **app_conf):
     app = SessionMiddleware(app, config)
     app = CacheMiddleware(app, config)
 
-    # Needed by authkit
-    #app = RecursiveMiddleware(app, global_conf)
-
     # Repoze auth
     log = logging.getLogger(__name__)
     log.debug('before add_auth')

@@ -22,7 +22,6 @@ repoze.who-friendlyform
 pyramid_who
 
 #### LEGACY (zkpylon) requirements:
-AuthKit>=0.4.0
 FormEncode>=0.6
 pylibravatar
 pylons

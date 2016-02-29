@@ -1,12 +1,3 @@
-# Zookeepr driver for AuthKit
-#
-# This module allows us to use the authkit infrastructure but using the
-# Zookeepr models to do so
-#  * We don't support groups
-#  * We don't support the creation methods as zkpylons does that already
-#
-
-
 import logging
 
 from zkpylons.model import meta, Person, Role
