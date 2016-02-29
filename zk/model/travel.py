@@ -40,5 +40,6 @@ class Travel(Base):
         return Session.query(Travel).all()
 
     @classmethod
-    def find_by_id(self, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(Travel).get(id)

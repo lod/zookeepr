@@ -52,7 +52,8 @@ class PaymentReceived(Base):
         return Session.query(PaymentReceived).order_by(PaymentReceived.id).all()
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(PaymentReceived).filter_by(id=id).first()
 
     @classmethod

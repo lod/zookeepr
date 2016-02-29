@@ -28,7 +28,8 @@ class ProposalStatus(Base):
         super(ProposalStatus, self).__init__(**kwargs)
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(ProposalStatus).filter_by(id=id).first()
 
     @classmethod
@@ -55,7 +56,8 @@ class ProposalType(Base):
         super(ProposalType, self).__init__(**kwargs)
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(ProposalType).filter_by(id=id).first()
 
     @classmethod
@@ -77,7 +79,8 @@ class TravelAssistanceType(Base):
         super(TravelAssistanceType, self).__init__(**kwargs)
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(TravelAssistanceType).filter_by(id=id).first()
 
     @classmethod
@@ -99,7 +102,8 @@ class TargetAudience(Base):
         super(TargetAudience, self).__init__(**kwargs)
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(TargetAudience).filter_by(id=id).first()
 
     @classmethod
@@ -123,7 +127,8 @@ class AccommodationAssistanceType(Base):
         super(AccommodationAssistanceType, self).__init__(**kwargs)
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(AccommodationAssistanceType).filter_by(id=id).first()
 
     @classmethod

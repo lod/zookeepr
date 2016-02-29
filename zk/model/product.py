@@ -45,7 +45,8 @@ class Product(Base):
         return Session.query(Product).order_by(Product.display_order).order_by(Product.cost).all()
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(Product).filter_by(id=id).first()
 
     @classmethod

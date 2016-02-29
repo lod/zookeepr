@@ -24,7 +24,8 @@ class FundingStatus(Base):
         super(FundingStatus, self).__init__(**kwargs)
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(FundingStatus).filter_by(id=id).first()
 
     @classmethod
@@ -59,7 +60,8 @@ class FundingType(Base):
            return False
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(FundingType).filter_by(id=id).first()
 
     @classmethod

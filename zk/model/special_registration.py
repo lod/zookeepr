@@ -22,7 +22,8 @@ class SpecialRegistration(Base):
         return Session.query(SpecialRegistration).all()
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(SpecialRegistration).filter_by(id=id).first()
 
     @classmethod

@@ -19,7 +19,8 @@ class Stream(Base):
         return Session.query(Stream).filter_by(name=name).first()
 
     @classmethod
-    def find_by_id(self, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(Stream).filter_by(id=id).first()
 
     @classmethod

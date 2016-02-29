@@ -38,7 +38,8 @@ class Attachment(Base):
         return Session.query(Attachment).filter_by(filename=filename).first()
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(Attachment).filter_by(id=id).first()
 
     @classmethod

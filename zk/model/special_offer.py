@@ -27,7 +27,8 @@ class SpecialOffer(Base):
         return Session.query(SpecialOffer).order_by(SpecialOffer.name).all()
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(SpecialOffer).filter_by(id=id).first()
 
     @classmethod

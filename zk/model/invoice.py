@@ -61,9 +61,9 @@ class Invoice(Base):
         return Session.query(Invoice).order_by(Invoice.id).options(sa.orm.subqueryload('person.registration')).all()
 
     @classmethod
-    def find_by_id(cls, id, do_abort=False):
+    def find_by_id(cls, id, abort_404=False):
         invoice = Session.query(Invoice).filter_by(id=id).first()
-        if do_abort and not invoice:
+        if abort_404 and not invoice:
             abort(404, 'Invalid invoice ID')
         return invoice
 

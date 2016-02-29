@@ -41,7 +41,8 @@ class ProductCategory(Base):
         return Session.query(ProductCategory).order_by(ProductCategory.display_order).order_by(ProductCategory.name).all()
 
     @classmethod
-    def find_by_id(cls, id):
+    def find_by_id(cls, id, abort_404=False):
+        # abort_404 is not supported, allowed for compatibility with other models
         return Session.query(ProductCategory).filter_by(id=id).first()
 
     @classmethod
